@@ -43,4 +43,4 @@ RUN chmod -R 775 storage bootstrap/cache
 EXPOSE 80
 
 # Start with PHP built-in server - clear and recache config at runtime to pick up env vars
-CMD php artisan config:clear && php artisan config:cache && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
+CMD php artisan config:clear && php artisan config:cache && php artisan migrate --force && php artisan db:seed --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
