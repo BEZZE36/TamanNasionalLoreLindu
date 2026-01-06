@@ -1,0 +1,136 @@
+/* ============================================================================
+   LIGHTBOX COMPONENTS - Gallery lightbox styling
+   ============================================================================ */
+
+/* Lightbox container states */
+.gallery-lightbox-backdrop,
+.gallery-lightbox-container {
+    pointer-events: none;
+}
+
+body.gallery-lightbox-open .gallery-lightbox-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99998 !important;
+    pointer-events: auto !important;
+    background-color: rgba(0, 0, 0, 0.85) !important;
+}
+
+body.gallery-lightbox-open .gallery-lightbox-container {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1rem !important;
+    pointer-events: auto !important;
+}
+
+/* Lightbox content */
+.gallery-lightbox-content {
+    pointer-events: auto !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+}
+
+/* Gallery cards */
+.gallery-card-enhanced {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative;
+    z-index: 1;
+}
+
+/* Interactive elements */
+.gallery-lightbox-content button,
+.gallery-lightbox-content a,
+.gallery-lightbox-content [role="button"],
+.gallery-lightbox-content input,
+.gallery-lightbox-content img,
+.gallery-lightbox-content video,
+.gallery-lightbox-content iframe {
+    pointer-events: auto !important;
+}
+
+.gallery-lightbox-content .absolute button {
+    pointer-events: auto !important;
+    z-index: 100 !important;
+}
+
+/* Slideshow progress */
+.animate-slideshow-progress {
+    animation: slideshow-progress 5s linear infinite;
+}
+
+/* Lightbox Info Panel */
+.lightbox-info-panel {
+    animation: slideInRight 0.4s ease-out;
+}
+
+/* Lightbox Category Badge */
+.lightbox-category-badge {
+    background: linear-gradient(135deg, #10b981, #0d9488);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Lightbox Share Buttons */
+.lightbox-share-btn {
+    transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.lightbox-share-btn:hover {
+    transform: translateY(-2px) scale(1.05);
+}
+
+.lightbox-share-btn:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* Lightbox CTA Button */
+.lightbox-cta-button {
+    background: linear-gradient(135deg, #10b981, #0d9488);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.lightbox-cta-button:hover {
+    background: linear-gradient(135deg, #059669, #0f766e);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Lightbox Navigation Arrows */
+.lightbox-nav-arrow {
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.lightbox-nav-arrow:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-50%) scale(1.1);
+}
+
+/* Thumbnail Strip */
+.lightbox-thumbnail-strip {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.7));
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lightbox-thumbnail {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.lightbox-thumbnail:hover {
+    transform: scale(1.1);
+    z-index: 10;
+}
+
+.lightbox-thumbnail.active {
+    border-color: #10b981;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+}

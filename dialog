@@ -1,0 +1,24 @@
+Pada halaman User Profile/Dashboard, tombol "Berhenti Berlangganan Newsletter" menggunakan native JavaScript confirm() yang tidak muncul di browser.
+
+Tolong periksa file resources/js/Pages/User/Profile.vue atau resources/js/Components/Footer/FooterNewsletter.vue dan ganti penggunaan confirm() dengan custom modal Vue seperti yang sudah diimplementasikan di Admin/Newsletter/Index.vue.
+
+
+
+
+Pada halaman [NAMA_HALAMAN], tombol [NAMA_TOMBOL] menggunakan native JavaScript [confirm()](cci:1://file:///c:/laragon/www/tnll%20-%20Copy/resources/js/Pages/Admin/Newsletter/Campaigns/Index.vue:87:0-98:2) atau `alert()` yang tidak muncul di browser. 
+
+Masalah: Browser modern sering memblokir native dialog seperti `window.confirm()`, `window.alert()`, dan `window.prompt()`.
+
+Solusi yang diperlukan:
+1. Ganti native [confirm()](cci:1://file:///c:/laragon/www/tnll%20-%20Copy/resources/js/Pages/Admin/Newsletter/Campaigns/Index.vue:87:0-98:2) dengan custom Vue Modal component
+2. Tambahkan state untuk mengontrol modal (showModal, selectedItem)
+3. Gunakan Teleport to="body" agar modal muncul di atas semua elemen
+4. Tambahkan tombol Batal dan Konfirmasi di dalam modal
+5. Panggil fungsi action hanya ketika user klik tombol konfirmasi
+
+Contoh pattern yang harus digunakan:
+- State: showDeleteModal, selectedItem
+- Functions: openModal(item), closeModal(), confirmAction()
+- Template: <Teleport to="body"><Transition><div v-if="showModal">...</div></Transition></Teleport>
+
+Tolong periksa file [PATH_FILE] dan ganti semua penggunaan confirm() dengan custom modal Vue.

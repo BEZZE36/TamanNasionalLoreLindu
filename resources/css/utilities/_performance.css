@@ -1,0 +1,169 @@
+/* ============================================================================
+   PERFORMANCE & REDUCED MOTION OVERRIDES
+   Forces animations to work even with prefers-reduced-motion
+   ============================================================================ */
+
+/* GPU Acceleration Hints */
+.particle,
+.destination-card-3d .card-inner,
+.destination-card-3d .card-image,
+.stat-card-premium,
+.bento-card,
+.floating-badge,
+.btn-cta-glow {
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
+
+/* Layout containment */
+.particle {
+    contain: strict;
+}
+
+.stat-card-premium,
+.bento-card,
+.destination-card-3d {
+    contain: layout style paint;
+}
+
+/* Mobile performance optimizations */
+@media (max-width: 768px) {
+
+    .stat-card-premium,
+    .card-glass-premium {
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
+}
+
+@media (max-width: 640px) {
+    .gradient-text-animated {
+        animation: gradientShimmer 5s linear infinite !important;
+    }
+
+    .btn-cta-glow::before {
+        animation: ctaGlow 4s ease-in-out infinite !important;
+    }
+}
+
+/* ============================================================================
+   FORCE ANIMATION OVERRIDE (prefers-reduced-motion)
+   ============================================================================ */
+
+/* FORCED: Spinner animations */
+.animate-spin,
+svg.animate-spin,
+[class*="animate-spin"],
+.spinner,
+.loading-spinner,
+.fa-spin {
+    animation: spin 1s linear infinite !important;
+}
+
+/* FORCED: Pulse animations */
+.animate-pulse,
+[class*="animate-pulse"] {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
+/* FORCED: Bounce animations */
+.animate-bounce {
+    animation: bounce 1s infinite !important;
+}
+
+/* FORCED: Ping animations */
+.animate-ping {
+    animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite !important;
+}
+
+/* FORCED: Float animations */
+.animate-float,
+.animate-float-slow {
+    animation: float 4s ease-in-out infinite !important;
+}
+
+/* FORCED: Skeleton loaders */
+.skeleton,
+.animate-shimmer,
+[class*="skeleton"] {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%) !important;
+    background-size: 200% 100% !important;
+    animation: shimmer 1.5s infinite !important;
+}
+
+/* FORCED: Scroll wheel */
+.scroll-wheel {
+    animation: scrollWheel 1.5s ease-in-out infinite !important;
+}
+
+/* FORCED: Gradient text */
+.gradient-text-animated {
+    animation: gradientShimmer 3s linear infinite !important;
+}
+
+/* FORCED: Transitions for interactive elements */
+html button,
+html .btn,
+html a,
+html [role="button"],
+body button,
+body .btn,
+body a,
+body [role="button"] {
+    transition: all 0.3s ease !important;
+}
+
+html [class*="card"],
+body [class*="card"] {
+    transition: all 0.3s ease !important;
+}
+
+html input,
+html textarea,
+html select {
+    transition: all 0.2s ease !important;
+}
+
+/* Smooth scroll */
+html {
+    scroll-behavior: smooth !important;
+}
+
+/* ============================================================================
+   REDUCED MOTION MEDIA QUERY OVERRIDE
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-play-state: running !important;
+        animation-duration: revert !important;
+        transition-property: all !important;
+        transition-duration: 0.3s !important;
+        scroll-behavior: smooth !important;
+    }
+
+    [class*="animate-"] {
+        animation-play-state: running !important;
+        animation-duration: revert !important;
+    }
+
+    [class*="transition"] {
+        transition-property: all !important;
+        transition-duration: 0.3s !important;
+    }
+
+    [x-transition],
+    [x-show] {
+        transition: all 0.3s ease !important;
+    }
+
+    [x-collapse] {
+        transition: height 0.3s ease !important;
+    }
+}

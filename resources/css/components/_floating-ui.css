@@ -1,0 +1,146 @@
+/**
+ * Floating UI Components - Chatbot & Scroll to Top
+ * Split from back-to-top.blade.php for maintainability
+ */
+
+/* ====== FADE IN ANIMATION ====== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.2s ease-out;
+}
+
+/* ====== CHAT SCROLLBAR ====== */
+#chat-messages::-webkit-scrollbar {
+    width: 4px;
+}
+
+#chat-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#chat-messages::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 4px;
+}
+
+/* ====== PREMIUM TOOLTIP STYLES ====== */
+.premium-tooltip {
+    position: absolute;
+    right: calc(100% + 16px);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 50;
+    pointer-events: auto;
+}
+
+.premium-tooltip .tooltip-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: white;
+    color: #1f2937;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 14px;
+    white-space: nowrap;
+    box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 20px 25px -5px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(10px);
+}
+
+.premium-tooltip .tooltip-text {
+    letter-spacing: -0.01em;
+}
+
+.premium-tooltip .tooltip-close {
+    color: #9ca3af;
+    padding: 4px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.premium-tooltip .tooltip-close:hover {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.premium-tooltip .tooltip-caret {
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%) rotate(45deg);
+    width: 12px;
+    height: 12px;
+    background: white;
+    box-shadow: 2px -2px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* ====== CHAT TOOLTIP ====== */
+.chat-tooltip {
+    position: absolute;
+    right: calc(100% + 14px);
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    z-index: 50;
+}
+
+.chat-tooltip .tooltip-inner {
+    display: flex;
+    align-items: center;
+    padding: 12px 18px;
+    background: #ffffff;
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 12px;
+    white-space: nowrap;
+    box-shadow:
+        0 10px 40px rgba(0, 0, 0, 0.15),
+        0 2px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.chat-tooltip .tooltip-inner svg {
+    color: #10b981;
+}
+
+.chat-tooltip::after {
+    content: '';
+    position: absolute;
+    right: -7px;
+    top: 50%;
+    transform: translateY(-50%) rotate(45deg);
+    width: 14px;
+    height: 14px;
+    background: #ffffff;
+    border-right: 1px solid rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.03);
+}
+
+.group:hover .chat-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-50%) translateX(-6px);
+}

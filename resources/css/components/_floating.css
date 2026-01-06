@@ -1,0 +1,128 @@
+/* ============================================================================
+   FLOATING UI - Chatbot & Scroll to Top Buttons
+   ============================================================================ */
+
+.floating-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    cursor: pointer;
+    border: none;
+    outline: none;
+}
+
+.floating-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), transparent);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.floating-btn:hover::before {
+    opacity: 1;
+}
+
+.floating-btn:hover {
+    transform: scale(1.1) translateY(-3px);
+}
+
+/* Scroll to Top Button */
+.scroll-top-btn {
+    width: 52px;
+    height: 52px;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(12px);
+    border: 2px solid rgba(16, 185, 129, 0.25);
+    color: #059669;
+    box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.08),
+        0 0 0 0 rgba(16, 185, 129, 0),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.scroll-top-btn:hover {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border-color: transparent;
+    box-shadow:
+        0 8px 30px rgba(16, 185, 129, 0.4),
+        0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+/* Progress Ring */
+.scroll-progress-ring {
+    position: absolute;
+    inset: -2px;
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
+    transform: rotate(-90deg);
+    pointer-events: none;
+}
+
+/* Chatbot Button Premium */
+.chatbot-btn-premium {
+    width: 68px;
+    height: 68px;
+    background: linear-gradient(145deg, #10b981 0%, #059669 50%, #047857 100%);
+    color: white;
+    border-radius: 50%;
+    box-shadow:
+        0 8px 32px rgba(16, 185, 129, 0.5),
+        0 4px 16px rgba(0, 0, 0, 0.15),
+        inset 0 2px 4px rgba(255, 255, 255, 0.3),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: visible;
+}
+
+.chatbot-btn-premium:hover {
+    background: linear-gradient(145deg, #34d399 0%, #10b981 50%, #059669 100%);
+    transform: scale(1.08) translateY(-4px);
+    box-shadow:
+        0 12px 40px rgba(16, 185, 129, 0.6),
+        0 6px 20px rgba(0, 0, 0, 0.2),
+        0 0 30px rgba(52, 211, 153, 0.5),
+        inset 0 2px 4px rgba(255, 255, 255, 0.4);
+}
+
+/* Outer Glow */
+.chatbot-outer-glow {
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(52, 211, 153, 0.35) 0%, rgba(16, 185, 129, 0.1) 50%, transparent 70%);
+    animation: outerGlowPulse 3s ease-in-out infinite;
+    pointer-events: none;
+}
+
+/* Pulse Ring */
+.chatbot-pulse-ring {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2.5px solid rgba(52, 211, 153, 0.7);
+    animation: chatbotPulseRing 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    pointer-events: none;
+}
+
+/* Shimmer Ring */
+.chatbot-shimmer-ring {
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg,
+            transparent 0deg,
+            rgba(255, 255, 255, 0.4) 60deg,
+            transparent 120deg,
+            transparent 360deg);
+    animation: shimmerRotate 4s linear infinite;
+    pointer-events: none;
+}

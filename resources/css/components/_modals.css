@@ -1,0 +1,56 @@
+/* ============================================================================
+   MODAL OVERLAYS - Body states for modal backdrop handling
+   ============================================================================ */
+
+/* Search Modal Body Blur - blur main content ONLY, not the modal itself */
+body.search-modal-open>*:not([class*="z-[99"]) {
+    filter: blur(8px);
+    pointer-events: none;
+    transition: filter 0.3s ease;
+}
+
+/* Search modal overlay and content - NEVER blurred */
+body.search-modal-open [class*="z-[99998"],
+body.search-modal-open [class*="z-[99999"] {
+    filter: none !important;
+    pointer-events: auto !important;
+}
+
+/* Blur floating elements when search is open (but not modal itself) */
+body.search-modal-open #chatbot-container,
+body.search-modal-open .chatbot-widget,
+body.search-modal-open [x-data*="chatbot"],
+body.search-modal-open .announcement-banner,
+body.search-modal-open [x-data*="floatingUI"],
+body.search-modal-open [x-data*="announcement"],
+body.search-modal-open .fixed:not([class*="z-[99"]) {
+    filter: blur(8px) !important;
+    pointer-events: none !important;
+}
+
+/* Search modal never blurred */
+.search-modal-wrapper,
+.search-modal-wrapper * {
+    filter: none !important;
+}
+
+/* Gallery Lightbox Body State */
+body.gallery-lightbox-open {
+    overflow: hidden;
+}
+
+body.gallery-lightbox-open #chatbot-container,
+body.gallery-lightbox-open .chatbot-widget,
+body.gallery-lightbox-open [x-data*="chatbot"],
+body.gallery-lightbox-open .announcement-banner,
+body.gallery-lightbox-open [x-data*="floatingUI"],
+body.gallery-lightbox-open [x-data*="announcement"] {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    z-index: 1 !important;
+}
+
+/* General lightbox open state */
+body.lightbox-open {
+    overflow: hidden;
+}

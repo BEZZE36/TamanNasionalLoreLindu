@@ -1,0 +1,212 @@
+/* ============================================================================
+   THUMBNAILS & PROGRESS INDICATORS
+   ============================================================================ */
+
+/* Progress Dots */
+.progress-dot-enhanced {
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background: #d1d5db;
+    transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    position: relative;
+}
+
+@media (min-width: 768px) {
+    .progress-dot-enhanced {
+        width: 10px;
+        height: 10px;
+    }
+}
+
+.progress-dot-enhanced:hover {
+    background: #9ca3af;
+    transform: scale(1.2);
+}
+
+.progress-dot-enhanced.active {
+    width: 32px;
+    background: linear-gradient(135deg, #10b981, #0d9488);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+}
+
+@media (min-width: 768px) {
+    .progress-dot-enhanced.active {
+        width: 40px;
+    }
+}
+
+.progress-dot-enhanced.active::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 9999px;
+    background: rgba(16, 185, 129, 0.3);
+    animation: dotPulse 2s ease-in-out infinite;
+    z-index: -1;
+}
+
+/* Enhanced Thumbnails */
+.thumbnail-enhanced {
+    position: relative;
+    border-radius: 0.75rem;
+    overflow: visible;
+    transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+@media (min-width: 768px) {
+    .thumbnail-enhanced {
+        border-radius: 1rem;
+    }
+}
+
+.thumbnail-enhanced:hover {
+    opacity: 1;
+    transform: scale(1.05);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.thumbnail-enhanced.active {
+    opacity: 1;
+    transform: scale(1.08);
+    outline: 3px solid #10b981;
+    outline-offset: 2px;
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+}
+
+/* Thumbnail Image Wrapper */
+.thumbnail-image-wrapper {
+    width: 80px;
+    height: 56px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.75rem;
+}
+
+@media (min-width: 640px) {
+    .thumbnail-image-wrapper {
+        width: 100px;
+        height: 70px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .thumbnail-image-wrapper {
+        width: 120px;
+        height: 80px;
+    }
+}
+
+.thumbnail-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.thumbnail-enhanced:hover .thumbnail-image {
+    transform: scale(1.1);
+}
+
+/* Thumbnail Overlay */
+.thumbnail-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.2), transparent);
+    opacity: 0.85;
+    transition: opacity 0.3s ease;
+}
+
+.thumbnail-overlay.active,
+.thumbnail-enhanced:hover .thumbnail-overlay {
+    opacity: 0.6;
+}
+
+/* Thumbnail Label */
+.thumbnail-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.375rem 0.5rem;
+}
+
+@media (min-width: 768px) {
+    .thumbnail-label {
+        padding: 0.5rem;
+    }
+}
+
+.thumbnail-label span {
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: white;
+    display: block;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+@media (min-width: 768px) {
+    .thumbnail-label span {
+        font-size: 0.75rem;
+    }
+}
+
+/* Active Indicator */
+.thumbnail-active-indicator {
+    position: absolute;
+    top: 0.375rem;
+    right: 0.375rem;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #0d9488);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+@media (min-width: 768px) {
+    .thumbnail-active-indicator {
+        width: 20px;
+        height: 20px;
+        top: 0.5rem;
+        right: 0.5rem;
+    }
+}
+
+.thumbnail-active-indicator.active {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Scroll Hint */
+.scroll-hint-arrow {
+    animation: scrollHintBounce 1.5s ease-in-out infinite;
+}
+
+/* Gallery Indicator Pill */
+.gallery-indicator-pill {
+    transition: all 0.3s ease;
+}
+
+.gallery-indicator-pill:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Destination Slide */
+.destination-slide-enhanced {
+    position: relative;
+    overflow: hidden;
+}

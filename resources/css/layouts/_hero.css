@@ -1,0 +1,188 @@
+/* ============================================================================
+   HERO & SECTION LAYOUTS
+   ============================================================================ */
+
+/* Hero Gradient */
+.hero-gradient {
+    background: linear-gradient(135deg, #065f46 0%, #047857 25%, #059669 50%, #10b981 75%, #065f46 100%);
+    background-size: 400% 400%;
+    animation: gradientFlow 15s ease infinite;
+}
+
+.hero-overlay {
+    background: linear-gradient(135deg, rgba(6, 95, 70, 0.9) 0%, rgba(4, 120, 87, 0.8) 50%, rgba(16, 185, 129, 0.7) 100%);
+}
+
+/* Section Spacing */
+.section {
+    padding: 5rem 0;
+}
+
+@media (min-width: 768px) {
+    .section {
+        padding: 6rem 0;
+    }
+}
+
+@media (min-width: 1024px) {
+    .section {
+        padding: 8rem 0;
+    }
+}
+
+/* Container */
+.container-custom {
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+    .container-custom {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .container-custom {
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+}
+
+/* Section Utilities */
+.section-wrapper {
+    position: relative;
+    overflow: hidden;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+@media (min-width: 1024px) {
+    .section-header {
+        margin-bottom: 4rem;
+    }
+}
+
+/* Particles */
+.particles-container {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    animation: particleFloat 15s infinite;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    opacity: 0.4;
+    animation-timing-function: linear;
+    contain: strict;
+}
+
+/* Scroll Mouse Indicator */
+.scroll-mouse {
+    width: 24px;
+    height: 40px;
+    border: 2px solid currentColor;
+    border-radius: 12px;
+    position: relative;
+    opacity: 0.9;
+    transition: opacity 0.3s ease;
+}
+
+.scroll-mouse:hover {
+    opacity: 1;
+}
+
+.scroll-wheel {
+    width: 4px;
+    height: 8px;
+    background: currentColor;
+    border-radius: 2px;
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: scrollWheel 1.5s ease-in-out infinite;
+}
+
+/* Scroll Indicator */
+.scroll-indicator-modern {
+    animation: scrollBounce 2s ease-in-out infinite;
+}
+
+.scroll-line-animated {
+    background: linear-gradient(to bottom, #ffffff, transparent);
+    animation: scrollLine 2s ease-in-out infinite;
+}
+
+/* Video Frame */
+.video-frame-premium {
+    position: relative;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.3);
+}
+
+.video-frame-premium::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    background: linear-gradient(135deg, #10b981, #06b6d4, #8b5cf6, #10b981);
+    background-size: 300% 300%;
+    animation: gradientBorder 4s ease infinite;
+    border-radius: 1.75rem;
+    z-index: -1;
+}
+
+/* CTA Section Gradient */
+.cta-gradient {
+    background: linear-gradient(135deg, #065f46 0%, #047857 30%, #059669 60%, #10b981 100%);
+    background-size: 300% 300%;
+    animation: ctaGradient 8s ease infinite;
+    position: relative;
+    overflow: hidden;
+}
+
+.cta-gradient::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    animation: patternMove 20s linear infinite;
+}
+
+/* Animated Checkmark */
+.check-animated {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 50%;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.check-animated::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transform: translateX(-100%);
+    animation: checkShine 2s ease-in-out infinite;
+}

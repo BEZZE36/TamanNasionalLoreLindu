@@ -1,0 +1,43 @@
+/* ============================================================================
+   BASE STYLES - Fundamental HTML element styling
+   ============================================================================ */
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Modern Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #10b981, #059669);
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #34d399, #10b981);
+}
+
+/* Selection */
+::selection {
+    background: rgba(16, 185, 129, 0.2);
+    color: #065f46;
+}
+
+/* Alpine.js cloak */
+[x-cloak] {
+    display: none !important;
+}

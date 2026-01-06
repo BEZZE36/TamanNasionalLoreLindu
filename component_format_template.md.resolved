@@ -1,0 +1,224 @@
+# Component Format Template - TNLL Explore
+
+> Use this template as a **prompt/reference** for applying consistent compact design and emerald theme across all pages.
+
+---
+
+## 🎨 Color Palette (Emerald/Teal Theme)
+
+```
+Primary Gradient: from-emerald-500 to-teal-600
+Secondary Gradient: from-teal-500 to-cyan-600
+Text Gradient: from-emerald-600 to-teal-600 (for bg-clip-text)
+
+Background Blurs:
+- from-emerald-100/20 to-teal-100/10 (decorative orbs)
+- from-cyan-100/20 to-blue-100/10 (accent orbs)
+
+Badge/Tag: bg-emerald-50 border-emerald-100 text-emerald-700
+Hover States: hover:text-emerald-600, hover:bg-emerald-50
+Active States: text-emerald-600 bg-emerald-50/80
+```
+
+---
+
+## 📏 Size Reference (Compact Design)
+
+### Text Sizes
+| Element | Class |
+|---------|-------|
+| Page Title | `text-xl sm:text-2xl md:text-3xl font-black` |
+| Section Badge | `text-[10px] font-semibold` |
+| Section Description | `text-xs text-gray-500` |
+| Card Title | `text-xs sm:text-sm font-bold` |
+| Card Description | `text-[10px] text-gray-500` |
+| Button Text | `text-xs font-medium` |
+| Meta/Date | `text-[9px] or text-[8px]` |
+
+### Spacing
+| Element | Class |
+|---------|-------|
+| Section Padding | `py-12 md:py-16` |
+| Container Max Width | `max-w-5xl mx-auto px-4 sm:px-6 lg:px-8` |
+| Card Gap | `gap-2 lg:gap-2.5` or `gap-3 lg:gap-4` |
+| Card Padding | `p-2.5` or `p-3` |
+| Button Padding | `px-4 py-2` or `px-3 py-1.5` |
+
+### Icon Sizes
+| Element | Class |
+|---------|-------|
+| Badge Icon | `w-3 h-3` |
+| Card Icon | `w-3.5 h-3.5` |
+| Button Icon | `w-3 h-3` |
+| Feature Icon Container | `w-7 h-7 rounded-lg` |
+
+### Border Radius
+| Element | Class |
+|---------|-------|
+| Cards | `rounded-xl` or `rounded-lg` |
+| Buttons | `rounded-lg` |
+| Badges | `rounded-full` or `rounded` |
+| Icons Container | `rounded-lg` |
+
+---
+
+## 🧱 Vue Component Structure
+
+```vue
+<script setup>
+import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { Link } from '@inertiajs/vue3';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { IconName } from 'lucide-vue-next';
+
+gsap.registerPlugin(ScrollTrigger);
+
+const props = defineProps({ data: Array });
+const sectionRef = ref(null);
+let ctx;
+
+onMounted(() => {
+    ctx = gsap.context(() => {
+        // Header animations
+        gsap.fromTo('.section-header > *', 
+            { opacity: 0, y: 20 }, 
+            { opacity: 1, y: 0, duration: 0.6, stagger: 0.06, ease: 'power3.out',
+              scrollTrigger: { trigger: '.section-header', start: 'top 80%', toggleActions: 'play none none reverse' }
+            }
+        );
+        // Items animations
+        gsap.fromTo('.section-item', 
+            { opacity: 0, y: 40 }, 
+            { opacity: 1, y: 0, duration: 0.6, stagger: 0.06, ease: 'power3.out',
+              scrollTrigger: { trigger: '.section-grid', start: 'top 75%', toggleActions: 'play none none reverse' }
+            }
+        );
+    }, sectionRef.value);
+});
+
+onBeforeUnmount(() => { if (ctx) ctx.revert(); });
+</script>
+
+<template>
+    <section ref="sectionRef" class="relative py-12 md:py-16 bg-gradient-to-b from-white to-gray-50 overflow-hidden">
+        <!-- Background Decorations -->
+        <div class="absolute inset-0 pointer-events-none">
+            <div class="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-emerald-100/20 to-teal-100/10 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 w-44 h-44 bg-gradient-to-tr from-cyan-100/20 to-blue-100/10 rounded-full blur-3xl"></div>
+        </div>
+
+        <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Header -->
+            <div class="section-header text-center mb-6 md:mb-8">
+                <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 mb-2">
+                    <IconName class="w-3 h-3" />
+                    <span class="text-[10px] font-semibold">Section Label</span>
+                </div>
+                <h2 class="text-xl sm:text-2xl md:text-3xl font-black text-gray-900 tracking-tight mb-2">
+                    Title Text <span class="block bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Gradient Text</span>
+                </h2>
+                <p class="text-xs text-gray-500 max-w-md mx-auto">Description text here</p>
+            </div>
+
+            <!-- Grid -->
+            <div class="section-grid grid grid-cols-2 lg:grid-cols-3 gap-2.5 lg:gap-3">
+                <!-- Items here -->
+            </div>
+
+            <!-- CTA -->
+            <div class="text-center mt-6">
+                <Link href="/page" class="group inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium text-xs shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/35 hover:-translate-y-0.5 transition-all duration-300">
+                    <span>Button Text</span>
+                    <ArrowRight class="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+            </div>
+        </div>
+    </section>
+</template>
+```
+
+---
+
+## 🖼️ Image Handling with Fallback
+
+```vue
+<img 
+    :src="item.image || '/assets/images/no-image.svg'" 
+    :alt="item.title" 
+    class="w-full h-full object-cover"
+    loading="lazy"
+    @error="(e) => { e.target.onerror = null; e.target.src = '/assets/images/no-image.svg'; }"
+>
+```
+
+---
+
+## 🎬 GSAP Animation Patterns
+
+### Entrance Animation
+```javascript
+gsap.fromTo('.element', 
+    { opacity: 0, y: 30 }, 
+    { opacity: 1, y: 0, duration: 0.6, stagger: 0.06, ease: 'power3.out',
+      scrollTrigger: { trigger: '.element', start: 'top 80%', toggleActions: 'play none none reverse' }
+    }
+);
+```
+
+### Floating Background Decoration
+```javascript
+gsap.to('.deco', { 
+    y: 'random(-10, 10)', 
+    x: 'random(-6, 6)', 
+    scale: 'random(0.94, 1.06)', 
+    duration: 'random(6, 9)', 
+    repeat: -1, yoyo: true, ease: 'sine.inOut', stagger: 1 
+});
+```
+
+---
+
+## 📋 Quick CSS Class Shortcuts
+
+```
+// Cards
+"group relative rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-lg transition-all duration-500 hover:-translate-y-0.5"
+
+// Gradient Overlay (for images)
+"absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent"
+
+// Badge
+"inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700"
+
+// Primary Button
+"inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium text-xs shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/35 hover:-translate-y-0.5 transition-all duration-300"
+
+// Text Button
+"inline-flex items-center gap-1 px-3 py-1.5 rounded text-emerald-600 font-medium text-xs hover:bg-emerald-50 transition-all duration-300"
+
+// Card Title on Image
+"text-xs sm:text-sm font-bold text-white group-hover:text-emerald-200 transition-colors line-clamp-2"
+
+// Backdrop Blur Badge (on image)
+"inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white/15 backdrop-blur-xl border border-white/20 text-white text-[8px] font-medium"
+```
+
+---
+
+## 📱 Responsive Breakpoints
+
+```
+sm: 640px   - Small phones
+md: 768px   - Tablets  
+lg: 1024px  - Laptops
+xl: 1280px  - Desktops
+2xl: 1536px - Large screens
+```
+
+**Typical responsive patterns:**
+- `text-xl sm:text-2xl md:text-3xl`
+- `grid-cols-2 lg:grid-cols-3`
+- `gap-2.5 lg:gap-3`
+- `px-4 sm:px-6 lg:px-8`
+- `py-12 md:py-16`

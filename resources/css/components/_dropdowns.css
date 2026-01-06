@@ -1,0 +1,78 @@
+/* ============================================================================
+   DROPDOWN & NOTIFICATION COMPONENTS
+   ============================================================================ */
+
+/* Modern Notification Dropdown */
+.notification-dropdown-modern {
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    border-radius: 1.25rem;
+    box-shadow:
+        0 20px 40px -10px rgba(0, 0, 0, 0.15),
+        0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.notification-item {
+    transition: all 0.3s ease;
+    border-radius: 0.75rem;
+}
+
+.notification-item:hover {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(6, 182, 212, 0.05));
+    transform: translateX(4px);
+}
+
+/* Bubble Dropdown */
+.dropdown-bubble {
+    position: relative;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    border-radius: 1.25rem;
+    box-shadow:
+        0 20px 40px -10px rgba(0, 0, 0, 0.15),
+        0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    overflow: visible;
+}
+
+.dropdown-bubble::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid rgba(255, 255, 255, 0.98);
+    filter: drop-shadow(0 -2px 2px rgba(0, 0, 0, 0.05));
+}
+
+.dropdown-bubble-item {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dropdown-bubble-item:hover {
+    transform: translateX(6px);
+}
+
+/* Stagger animation */
+.dropdown-stagger>*:nth-child(1) {
+    animation-delay: 0.05s;
+}
+
+.dropdown-stagger>*:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.dropdown-stagger>*:nth-child(3) {
+    animation-delay: 0.15s;
+}
+
+.dropdown-stagger>*:nth-child(4) {
+    animation-delay: 0.2s;
+}
+
+.dropdown-stagger>*:nth-child(5) {
+    animation-delay: 0.25s;
+}
