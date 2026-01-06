@@ -36,11 +36,24 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 # Install Node dependencies and build assets
 RUN npm ci && npm run build
 
-# Set permissions
-RUN chmod -R 775 storage bootstrap/cache
+# Create storage directories and set permissions
+RUN mkdir -p storage/logs \
+    && mkdir -p storage/framework/cache/data \
+    && mkdir -p storage/framework/sessions \
+    && mkdir -p storage/framework/views \
+    && mkdir -p storage/app/public \
+    && mkdir -p bootstrap/cache \
+    && chmod -R 777 storage \
+    && chmod -R 777 bootstrap/cache
 
-# Expose port (Railway uses PORT env variable)
-EXPOSE 80
+# Generate optimized files
+RUN php artisan storage:link || true
+RUN php artisan config:clear
+RUN php artisan cache:clear
+RUN php artisan view:clear
+
+# Expose port
+EXPOSE 8080
 
 # Start with PHP built-in server
-CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-80}
+CMD php artisan migrate --force && php artisan config:cache && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
