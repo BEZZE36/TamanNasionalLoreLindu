@@ -49,6 +49,124 @@ Your answers must:
 
 prompt 2 : 
 
+Berikut daftar fitur lengkap modul Berita pada website TNLL Explore, dipisah antara sisi Admin dan sisi Pengguna.
+
+=== SISI ADMIN PANEL ===
+
+1. Dashboard Berita
+
+* Total berita
+* Total view keseluruhan dan perberita
+* Berita aktif
+* Berita draft
+* Berita diarsipkan
+* Grafik pembaca berita
+
+2. Manajemen Berita (CRUD)
+
+* Tambah berita
+* Edit berita
+* Hapus berita
+* Restore berita
+* Duplikat berita
+* Preview berita
+* Penjadwalan publish
+* Auto slug generator
+* Multi bahasa input
+* Histori revisi
+* Auto save draft
+* Tombol arsipkan
+* Bulk delete
+* Bulk publish
+* Bulk archive
+* Nama Penulis Berita Otomatis diambil dari nama yang mengetik nama orang yang login atau , nama akun yang digunakan untuk menulis
+
+
+
+
+3. Tag
+
+* Tambah tag
+* Edit tag
+* Hapus tag
+* Rekomendasi tag otomatis melalu generate with ai gemini dan fungsikan
+
+6. Komentar
+
+* Lihat komentar
+* Moderasi komentar
+* Approve komentar
+* Reject komentar
+* Hapus komentar
+* Filter komentar
+* Blokir user komentar
+* Reply komentar admin
+
+7. SEO Tools
+
+* Meta title
+* Meta description
+* Keyword
+
+
+
+
+
+
+10. Keamanan
+
+* realtime Validasi input
+
+
+=== SISI PENGGUNA ===
+
+1. Halaman Daftar Berita
+
+* List berita
+* Pagination
+* Infinite scroll
+* Urutkan berita
+
+2. Detail Berita
+
+* Tampilan judul
+* Isi berita
+* Related news
+* Tombol share sosial
+
+3. Komentar Pengguna
+
+* Tambah komentar
+* Reply komentar
+* Like komentar
+* Report komentar
+* Edit komentar sendiri
+* Hapus komentar sendiri
+
+4. Interaksi
+
+* Simpan favorit
+* Suka Berita
+* View Berita
+* Notifikasi berita baru
+
+
+
+
+
+7. Integrasi
+
+* Share ke WA
+* Telegram
+* Facebook
+* Twitter
+* Email
+
+
+
+
+
+
 Powered by TNLL AI ✨
 
 redesign halaman kebijakan privasi dan syarat & kentetuan di public atau web asli, hapus desain lama dan buat desain baru atau hapus kode lama dan buat kode baru, dan buat desain yang lebih modern, ui lebih premium, lebih profesiona, lebih beranimasi, untuk desain hero nya ikuti desain hero dari halaman destinasi, dan ikuti juga desain hero background nya, dan pelajari ini@home-design-system.md.resolved 
@@ -56,3 +174,13 @@ redesign halaman kebijakan privasi dan syarat & kentetuan di public atau web asl
 ada efek curved/wave di bagian bawah background hero yang membuat transisi ke bagian putih terlihat lebih elegan
 
 dan untuk ukuran text,component,dll coba kamu pelajari halaman beranda, sesuaikan ukuran dengan faq
+
+redesign halaman blog dan berita di public atau web asli, hapus desain lama dan buat desain baru atau hapus kode lama dan buat kode baru, dan buat desain yang lebih modern, ui lebih premium, lebih profesional, lebih beranimasi, untuk desain hero nya ikuti desain hero dari halaman destinasi, dan ikuti juga desain hero background nya,  dan buat halaman blog dan berita responsive all device, dan untuk ukuran text,component,dll coba kamu pelajari halaman beranda, sesuaikan ukuran dengan halaman tiket saya, dan testing biar saya saja, dan tambahakan dan fungsikan semua fitur,component, dll
+
+redesign halaman pemesanan index,create,edit,view di admin panel , hapus desain lama dan buat desain baru atau hapus kode lama dan buat kode baru, dan buat desain yang lebih modern, ui lebih premium, lebih profesional, lebih beranimasi,   dan buat halaman pemesanan responsive all device, dan untuk ukuran text,component,dll coba kamu pelajari halaman newsletter, sesuaikan ukuran dengan halaman pemesanan, dan testing biar saya saja, dan tambahakan dan fungsikan semua fitur,component, dll, dan kamu analisa dulu halaman booking di user agar sapatau ada yang kurang kamu boleh tambahkan
+
+
+redesign halaman menu dashboarddi admin panel , hapus desain lama dan buat desain baru atau hapus kode lama dan buat kode baru, dan buat desain yang lebih modern, ui lebih premium, lebih profesional, lebih beranimasi,   dan buat halaman dashboard responsive all device, dan untuk ukuran text,component,dll coba kamu pelajari halaman newsletter, sesuaikan ukuran dengan halaman dashboard, dan testing biar saya saja, dan tambahakan dan fungsikan semua fitur,component, dll, dan kamu analisa dulu semua halaman menu admin  disidebar agar sapatau ada yang kurang kamu boleh tambahkan, tambahkan dengan lengkap
+
+hapus laravelError.log dan atur dia supaya tidak muncul lagi soalnya saya tidak butuh karena ada juga laravel.log dan bersihkan log dari laravel.log
+Live Reading Time Display

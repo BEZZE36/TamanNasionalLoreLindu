@@ -7,7 +7,7 @@ import {
     Shield, ArrowLeft, Save, Key, Loader2, Crown, ChevronDown, ChevronUp, Lock,
     Eye, EyeOff, Edit3, Check, X, LayoutDashboard, MapPin, Sparkles, Bird, Image,
     Megaphone, FileText, Newspaper, Mail, Settings, ClipboardList, Ticket, Users,
-    QrCode, Clock, BarChart3, UserCircle, Database
+    QrCode, Clock, BarChart3, UserCircle, Database, User, UserX
 } from 'lucide-vue-next';
 
 defineOptions({ layout: AdminLayout });
@@ -20,7 +20,7 @@ const props = defineProps({
 const pageRef = ref(null);
 const expandedGroups = ref({}); // Semua tertutup awalnya
 
-// Group config sesuai urutan sidebar (19 menu)
+// Group config sesuai urutan sidebar (20 menu)
 const groupConfig = {
     // KONTEN
     'dashboard': { label: 'Dashboard', icon: LayoutDashboard, color: 'blue', order: 1 },
@@ -32,19 +32,20 @@ const groupConfig = {
     'articles': { label: 'Artikel', icon: FileText, color: 'indigo', order: 7 },
     'news': { label: 'Berita', icon: Newspaper, color: 'red', order: 8 },
     'newsletter': { label: 'Newsletter', icon: Mail, color: 'teal', order: 9 },
-    'site-info': { label: 'Edit Info', icon: Settings, color: 'cyan', order: 10 },
+    'testimonial': { label: 'Testimonial', icon: Users, color: 'rose', order: 10 },
+    'site-info': { label: 'Edit Info', icon: Settings, color: 'cyan', order: 11 },
     // MANAJEMEN
-    'bookings': { label: 'Pemesanan', icon: ClipboardList, color: 'sky', order: 11 },
-    'coupons': { label: 'Kupon', icon: Ticket, color: 'fuchsia', order: 12 },
-    'users': { label: 'Pengguna', icon: Users, color: 'violet', order: 13 },
-    'tickets': { label: 'Scan Tiket', icon: QrCode, color: 'purple', order: 14 },
+    'bookings': { label: 'Pemesanan', icon: ClipboardList, color: 'sky', order: 12 },
+    'coupons': { label: 'Kupon', icon: Ticket, color: 'fuchsia', order: 13 },
+    'users': { label: 'Pengguna', icon: Users, color: 'violet', order: 14 },
+    'tickets': { label: 'Scan Tiket', icon: QrCode, color: 'purple', order: 15 },
     // LAPORAN
-    'activity-logs': { label: 'Activity Log', icon: Clock, color: 'gray', order: 15 },
-    'analytics': { label: 'Analytics', icon: BarChart3, color: 'green', order: 16 },
+    'activity-logs': { label: 'Activity Log', icon: Clock, color: 'gray', order: 16 },
+    'analytics': { label: 'Analytics', icon: BarChart3, color: 'green', order: 17 },
     // PENGATURAN
-    'admins': { label: 'Kelola Admin', icon: UserCircle, color: 'slate', order: 17 },
-    'roles': { label: 'Role & Akses', icon: Shield, color: 'rose', order: 18 },
-    'database': { label: 'Database', icon: Database, color: 'blue', order: 19 },
+    'admins': { label: 'Kelola Admin', icon: UserCircle, color: 'slate', order: 18 },
+    'roles': { label: 'Role & Akses', icon: Shield, color: 'rose', order: 19 },
+    'database': { label: 'Database', icon: Database, color: 'blue', order: 20 },
 };
 
 // Permission levels
@@ -62,6 +63,9 @@ const form = useForm({
 });
 
 const isProtected = props.role?.slug === 'super-admin';
+const isUserRole = props.role?.slug === 'user';
+const isGuestRole = props.role?.slug === 'guest';
+const isSpecialRole = isProtected || isUserRole || isGuestRole;
 
 // Filter only admin permissions (exclude public & user-actions) dan urutkan
 const adminPermissions = computed(() => {
@@ -195,9 +199,15 @@ onMounted(() => {
                     </div>
                     <div>
                         <div class="flex items-center gap-2 mb-0.5">
-                            <h1 class="text-lg font-bold text-white">Edit Role</h1>
+                            <h1 class="text-lg font-bold text-white">{{ isSpecialRole ? 'Lihat Role' : 'Edit Role' }}</h1>
                             <span v-if="isProtected" class="px-2 py-0.5 bg-white/20 rounded-full text-[9px] font-bold text-white flex items-center gap-1">
                                 <Lock class="w-2.5 h-2.5" /> Protected
+                            </span>
+                            <span v-else-if="isUserRole" class="px-2 py-0.5 bg-white/20 rounded-full text-[9px] font-bold text-white flex items-center gap-1">
+                                <Lock class="w-2.5 h-2.5" /> Default Role
+                            </span>
+                            <span v-else-if="isGuestRole" class="px-2 py-0.5 bg-white/20 rounded-full text-[9px] font-bold text-white flex items-center gap-1">
+                                <Lock class="w-2.5 h-2.5" /> Default Role
                             </span>
                         </div>
                         <p class="text-white/70 text-[11px]">{{ role?.name }} · {{ role?.slug }}</p>
@@ -217,8 +227,30 @@ onMounted(() => {
             </div>
         </div>
 
+        <!-- User Role Info -->
+        <div v-else-if="isUserRole" class="flex items-center gap-3 rounded-xl bg-emerald-50 border border-emerald-200 px-5 py-4">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg">
+                <Users class="w-5 h-5 text-white" />
+            </div>
+            <div>
+                <p class="text-sm font-bold text-emerald-800">Full Akses Halaman Public</p>
+                <p class="text-xs text-emerald-600">User dapat mengakses semua fitur publik: booking, review, komentar, like, download, dll.</p>
+            </div>
+        </div>
+
+        <!-- Guest Role Info -->
+        <div v-else-if="isGuestRole" class="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 px-5 py-4">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-400 to-gray-500 flex items-center justify-center shadow-lg">
+                <Eye class="w-5 h-5 text-white" />
+            </div>
+            <div>
+                <p class="text-sm font-bold text-slate-800">Hanya Membaca (Read-Only)</p>
+                <p class="text-xs text-slate-600">Guest hanya dapat melihat konten publik tanpa izin interaksi (komentar, like, download, booking).</p>
+            </div>
+        </div>
+
         <!-- Permission Stats -->
-        <div v-if="!isProtected" class="grid grid-cols-4 gap-3">
+        <div v-if="!isSpecialRole" class="grid grid-cols-4 gap-3">
             <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
                 <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-500 to-slate-600 flex items-center justify-center">
                     <Shield class="w-4 h-4 text-white" />
@@ -275,7 +307,7 @@ onMounted(() => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-[10px] font-bold text-gray-600 mb-1.5">Nama Role <span class="text-red-500">*</span></label>
-                            <input v-model="form.name" type="text" required :disabled="isProtected"
+                            <input v-model="form.name" type="text" required :disabled="isSpecialRole"
                                 class="w-full px-3.5 py-2.5 text-xs rounded-xl border-2 border-gray-200 focus:border-slate-500 focus:ring-4 focus:ring-slate-500/10 transition-all bg-gray-50/50 disabled:opacity-50 disabled:cursor-not-allowed">
                             <p v-if="form.errors.name" class="text-red-500 text-[10px] mt-1">{{ form.errors.name }}</p>
                         </div>
@@ -288,14 +320,14 @@ onMounted(() => {
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-gray-600 mb-1.5">Deskripsi</label>
-                        <textarea v-model="form.description" rows="2" :disabled="isProtected"
+                        <textarea v-model="form.description" rows="2" :disabled="isSpecialRole"
                             class="w-full px-3.5 py-2.5 text-xs rounded-xl border-2 border-gray-200 focus:border-slate-500 focus:ring-4 focus:ring-slate-500/10 transition-all bg-gray-50/50 resize-none disabled:opacity-50 disabled:cursor-not-allowed"></textarea>
                     </div>
                 </div>
             </div>
 
             <!-- Permissions with 3-Level System -->
-            <div v-if="!isProtected" class="form-card rounded-xl bg-white shadow-lg border border-gray-100 overflow-hidden">
+            <div v-if="!isSpecialRole" class="form-card rounded-xl bg-white shadow-lg border border-gray-100 overflow-hidden">
                 <div class="px-5 py-3.5 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 border-b border-purple-100/50">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
@@ -375,7 +407,7 @@ onMounted(() => {
             </div>
 
             <!-- Super Admin full access info -->
-            <div v-else class="form-card rounded-xl bg-gradient-to-r from-amber-50 to-yellow-50 shadow-lg border border-amber-200 overflow-hidden">
+            <div v-else-if="isProtected" class="form-card rounded-xl bg-gradient-to-r from-amber-50 to-yellow-50 shadow-lg border border-amber-200 overflow-hidden">
                 <div class="px-5 py-6 text-center">
                     <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-xl shadow-amber-500/30 mb-4">
                         <Crown class="w-8 h-8 text-white" />
@@ -388,16 +420,218 @@ onMounted(() => {
                 </div>
             </div>
 
+            <!-- User Role full public access info -->
+            <div v-else-if="isUserRole" class="form-card rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 shadow-lg border border-emerald-200 overflow-hidden">
+                <div class="px-5 py-6 text-center">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-xl shadow-emerald-500/30 mb-4">
+                        <User class="w-8 h-8 text-white" />
+                    </div>
+                    <h3 class="text-lg font-bold text-emerald-800 mb-1">Full Akses Halaman Public</h3>
+                    <p class="text-xs text-emerald-600 max-w-lg mx-auto">
+                        Pengguna yang sudah login memiliki akses penuh ke semua halaman publik dan dapat melakukan semua fitur interaksi.
+                    </p>
+                    
+                    <!-- Public Pages Access -->
+                    <div class="mt-5">
+                        <p class="text-[10px] font-bold text-emerald-700 mb-2">📖 Akses Halaman Publik</p>
+                        <div class="flex flex-wrap justify-center gap-1.5">
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Beranda</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Destinasi</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Detail Destinasi</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Bandingkan Destinasi</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Flora</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Detail Flora</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Fauna</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Detail Fauna</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Galeri</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Detail Galeri</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Blog</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Detail Blog</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Berita</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Detail Berita</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Peta Eksplor</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ FAQ</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Halaman Kontak</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Testimonial</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Tentang Kami</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Privasi</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Syarat & Ketentuan</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Chatbot AI</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Booking & Tiket -->
+                    <div class="mt-4">
+                        <p class="text-[10px] font-bold text-emerald-700 mb-2">🎫 Booking & Tiket</p>
+                        <div class="flex flex-wrap justify-center gap-1.5">
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Buat Pemesanan</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Edit Pemesanan Pending</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Batalkan Pemesanan</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Bayar via Midtrans</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Bayar via Cash</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Lihat Riwayat Pesanan</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Lihat Detail Pesanan</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Download E-Tiket PDF</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Download Invoice</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Gunakan Kupon</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Interactions -->
+                    <div class="mt-4">
+                        <p class="text-[10px] font-bold text-emerald-700 mb-2">💬 Komentar & Review</p>
+                        <div class="flex flex-wrap justify-center gap-1.5">
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Komentar Destinasi</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Komentar Flora</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Komentar Fauna</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Komentar Galeri</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Komentar Artikel</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Komentar Berita</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Hapus Komentar Sendiri</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Review Destinasi</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Lihat My Reviews</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Kirim Testimonial</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Kirim Pesan Kontak</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Like & Favorit -->
+                    <div class="mt-4">
+                        <p class="text-[10px] font-bold text-emerald-700 mb-2">❤️ Like & Favorit</p>
+                        <div class="flex flex-wrap justify-center gap-1.5">
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Like Galeri</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Like Artikel</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Like Berita</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Favorit Galeri</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Favorit Destinasi</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Favorit Artikel</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Wishlist Destinasi</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Lihat My Favorites</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Lihat My Likes</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Profile & Akun -->
+                    <div class="mt-4">
+                        <p class="text-[10px] font-bold text-emerald-700 mb-2">👤 Profil & Akun</p>
+                        <div class="flex flex-wrap justify-center gap-1.5">
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Dashboard User</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Edit Profil</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Ganti Password</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Upload Avatar</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Hapus Avatar</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Lihat Notifikasi</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Tandai Notifikasi Dibaca</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Push Notification</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Subscribe Newsletter</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Unsubscribe Newsletter</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">✓ Login/Logout</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guest Role read-only access info -->
+            <div v-else-if="isGuestRole" class="form-card rounded-xl bg-gradient-to-r from-slate-50 to-gray-50 shadow-lg border border-slate-200 overflow-hidden">
+                <div class="px-5 py-6 text-center">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-slate-400 to-gray-500 flex items-center justify-center shadow-xl shadow-slate-500/30 mb-4">
+                        <UserX class="w-8 h-8 text-white" />
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800 mb-1">Hanya Membaca (Read-Only)</h3>
+                    <p class="text-xs text-slate-600 max-w-lg mx-auto">
+                        Pengunjung yang belum login hanya dapat melihat konten publik tanpa bisa melakukan interaksi apapun. Harus login untuk mengakses fitur interaktif.
+                    </p>
+                    
+                    <!-- Allowed: Viewing Only -->
+                    <div class="mt-5">
+                        <p class="text-[10px] font-bold text-slate-700 mb-2">✓ Halaman yang Dapat Diakses (Hanya Lihat)</p>
+                        <div class="flex flex-wrap justify-center gap-1.5">
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Beranda</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Destinasi</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Detail Destinasi</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Bandingkan Destinasi</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Flora</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Detail Flora</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Fauna</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Detail Fauna</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Galeri</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Detail Galeri</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Blog</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Detail Blog</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Berita</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Detail Berita</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Peta Eksplor</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ FAQ</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Halaman Kontak</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Lihat Testimonial</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Tentang Kami</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Privasi</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Syarat & Ketentuan</span>
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">✓ Chatbot AI</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Not Allowed: Booking & Tiket -->
+                    <div class="mt-4">
+                        <p class="text-[10px] font-bold text-red-500 mb-2">✗ Booking & Tiket (Harus Login)</p>
+                        <div class="flex flex-wrap justify-center gap-1.5">
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Buat Pemesanan</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Lihat Pesanan</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Download E-Tiket</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Download Invoice</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Not Allowed: Comments & Reviews -->
+                    <div class="mt-4">
+                        <p class="text-[10px] font-bold text-red-500 mb-2">✗ Komentar & Review (Harus Login)</p>
+                        <div class="flex flex-wrap justify-center gap-1.5">
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Komentar Destinasi</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Komentar Flora/Fauna</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Komentar Galeri</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Komentar Artikel</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Review Destinasi</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Kirim Testimonial</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Not Allowed: Like & Favorit -->
+                    <div class="mt-4">
+                        <p class="text-[10px] font-bold text-red-500 mb-2">✗ Like & Favorit (Harus Login)</p>
+                        <div class="flex flex-wrap justify-center gap-1.5">
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Like Galeri/Artikel</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Favorit Galeri</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Wishlist Destinasi</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Favorit Artikel</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Not Allowed: Profile & Account -->
+                    <div class="mt-4">
+                        <p class="text-[10px] font-bold text-red-500 mb-2">✗ Profil & Akun (Harus Login)</p>
+                        <div class="flex flex-wrap justify-center gap-1.5">
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Dashboard</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Edit Profil</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Notifikasi</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Push Notification</span>
+                            <span class="px-2 py-0.5 bg-red-50 text-red-500 text-[9px] font-bold rounded-full">✗ Newsletter</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Actions -->
             <div class="flex gap-3">
-                <button type="submit" :disabled="form.processing || isProtected"
+                <!-- Only show submit button for custom roles -->
+                <button v-if="!isSpecialRole" type="submit" :disabled="form.processing"
                     class="flex-1 py-3 bg-gradient-to-r from-slate-600 to-gray-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-slate-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                     <Loader2 v-if="form.processing" class="w-4 h-4 animate-spin" />
                     <Save v-else class="w-4 h-4" />
                     {{ form.processing ? 'Menyimpan...' : 'Perbarui Role' }}
                 </button>
-                <Link href="/admin/roles" class="px-6 py-3 bg-gray-100 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-200 transition-colors">
-                    Batal
+                <Link href="/admin/roles" :class="isSpecialRole ? 'flex-1 py-3 text-center' : 'px-6 py-3'" class="bg-gray-100 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
+                    <ArrowLeft class="w-4 h-4" />
+                    Kembali
                 </Link>
             </div>
         </form>

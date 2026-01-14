@@ -14,7 +14,7 @@ use Inertia\Inertia;
 Route::get('/', function () {
     $destinations = \App\Models\Destination::with(['category', 'images', 'prices'])
         ->where('is_active', true)
-        ->take(6)
+        ->take(10)
         ->get()
         ->map(function ($dest) {
             return [
@@ -34,7 +34,7 @@ Route::get('/', function () {
     $galleries = \App\Models\Gallery::where('is_active', true)
         ->orderBy('sort_order', 'asc')
         ->with(['category'])
-        ->take(8)
+        ->take(10)
         ->get()
         ->map(function ($gallery) {
             return [
@@ -49,10 +49,11 @@ Route::get('/', function () {
             ];
         });
 
-    // Articles for blog section
+    // Articles for blog section (exclude berita/news category)
     $articles = \App\Models\Article::published()
+        ->where('category', '!=', 'berita')
         ->orderBy('created_at', 'desc')
-        ->take(3)
+        ->take(10)
         ->get()
         ->map(function ($article) {
             return [
@@ -71,7 +72,7 @@ Route::get('/', function () {
     $news = \App\Models\Article::published()
         ->where('category', 'berita')
         ->orderBy('published_at', 'desc')
-        ->take(5)
+        ->take(10)
         ->get()
         ->map(function ($item) {
             return [
@@ -91,6 +92,26 @@ Route::get('/', function () {
         $faqItems = json_decode($faqItems, true) ?? [];
     }
 
+    // Testimonials for home section
+    $testimonials = \App\Models\Feedback::where('is_published', true)
+        ->orderBy('created_at', 'desc')
+        ->take(10)
+        ->get()
+        ->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'name' => $item->display_name_text,
+                'rating' => $item->rating,
+                'content' => $item->message,
+                'destination' => $item->destination?->name ?? null,
+                'created_at' => $item->created_at,
+                'is_verified' => true,
+            ];
+        });
+
+    $avgRating = \App\Models\Feedback::where('is_published', true)->avg('rating') ?? 4.8;
+    $totalReviews = \App\Models\Feedback::where('is_published', true)->count();
+
     $stats = [
         'destinations' => \App\Models\Destination::count(),
         'flora' => \App\Models\Flora::count(),
@@ -103,7 +124,10 @@ Route::get('/', function () {
         'galleries' => $galleries,
         'articles' => $articles,
         'news' => $news,
-        'faqItems' => array_slice($faqItems, 0, 4),
+        'faqItems' => array_slice($faqItems, 0, 6),
+        'testimonials' => $testimonials,
+        'avgRating' => $avgRating,
+        'totalReviews' => $totalReviews,
         'stats' => $stats,
     ]);
 })->name('home');
@@ -145,4 +169,16 @@ Route::get('/api/announcements/public', [App\Http\Controllers\PublicAnnouncement
 // Newsletter Subscription
 Route::post('/newsletter/subscribe', [App\Http\Controllers\NewsletterController::class, 'subscribe'])
     ->name('newsletter.subscribe');
+
+// Push Notification Subscription
+Route::prefix('push')->name('push.')->group(function () {
+    Route::get('/vapid-public-key', [App\Http\Controllers\PushSubscriptionController::class, 'vapidPublicKey'])
+        ->name('vapid-key');
+    Route::post('/subscribe', [App\Http\Controllers\PushSubscriptionController::class, 'subscribe'])
+        ->name('subscribe')->middleware('auth');
+    Route::post('/unsubscribe', [App\Http\Controllers\PushSubscriptionController::class, 'unsubscribe'])
+        ->name('unsubscribe')->middleware('auth');
+    Route::get('/status', [App\Http\Controllers\PushSubscriptionController::class, 'status'])
+        ->name('status');
+});
 

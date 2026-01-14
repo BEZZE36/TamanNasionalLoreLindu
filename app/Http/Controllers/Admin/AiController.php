@@ -3,17 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\GeminiService;
+use App\Services\OpenRouterService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class AiController extends Controller
 {
-    protected GeminiService $gemini;
+    protected OpenRouterService $ai;
 
-    public function __construct(GeminiService $gemini)
+    public function __construct(OpenRouterService $ai)
     {
-        $this->gemini = $gemini;
+        $this->ai = $ai;
     }
 
     /**
@@ -30,9 +30,9 @@ class AiController extends Controller
         $type = $request->input('type', 'paragraph');
 
         if ($request->filled('prompt') && !$request->filled('context')) {
-            $result = $this->gemini->generateContent($request->input('prompt'), $type);
+            $result = $this->ai->generateContent($request->input('prompt'), $type);
         } else {
-            $result = $this->gemini->generate($request->input('prompt'), $request->input('context'));
+            $result = $this->ai->generate($request->input('prompt'), $request->input('context'));
         }
 
         return response()->json($result);
@@ -48,7 +48,7 @@ class AiController extends Controller
             'style' => 'nullable|string|in:formal,casual,seo'
         ]);
 
-        $result = $this->gemini->rewrite(
+        $result = $this->ai->rewrite(
             $request->input('content'),
             $request->input('style', 'formal')
         );
@@ -66,7 +66,7 @@ class AiController extends Controller
             'sentences' => 'nullable|integer|min:1|max:10'
         ]);
 
-        $result = $this->gemini->summarize(
+        $result = $this->ai->summarize(
             $request->input('content'),
             $request->input('sentences', 3)
         );
@@ -84,7 +84,7 @@ class AiController extends Controller
             'keyword' => 'nullable|string|max:100'
         ]);
 
-        $result = $this->gemini->seoSuggestions(
+        $result = $this->ai->seoSuggestions(
             $request->input('content'),
             $request->input('keyword')
         );
@@ -102,7 +102,7 @@ class AiController extends Controller
             'count' => 'nullable|integer|min:1|max:10'
         ]);
 
-        $result = $this->gemini->generateHeadlines(
+        $result = $this->ai->generateHeadlines(
             $request->input('content'),
             $request->input('count', 5)
         );
@@ -119,7 +119,7 @@ class AiController extends Controller
             'content' => 'required|string|max:5000'
         ]);
 
-        $result = $this->gemini->expand($request->input('content'));
+        $result = $this->ai->expand($request->input('content'));
 
         return response()->json($result);
     }
@@ -133,7 +133,7 @@ class AiController extends Controller
             'content' => 'required|string|max:10000'
         ]);
 
-        $result = $this->gemini->shorten($request->input('content'));
+        $result = $this->ai->shorten($request->input('content'));
 
         return response()->json($result);
     }
@@ -147,12 +147,28 @@ class AiController extends Controller
             'content' => 'required|string|max:10000'
         ]);
 
-        $result = $this->gemini->improveGrammar($request->input('content'));
+        $result = $this->ai->improveGrammar($request->input('content'));
 
         return response()->json($result);
     }
 
+    /**
+     * Translate content (ID↔EN) preserving HTML formatting
+     */
+    public function translate(Request $request): JsonResponse
+    {
+        $request->validate([
+            'content' => 'required|string|max:20000',
+            'direction' => 'nullable|in:id_to_en,en_to_id'
+        ]);
 
+        $result = $this->ai->translate(
+            $request->input('content'),
+            $request->input('direction', 'id_to_en')
+        );
+
+        return response()->json($result);
+    }
 
     /**
      * Generate SEO Tags (JSON)
@@ -163,13 +179,41 @@ class AiController extends Controller
             'content' => 'required|string|max:10000'
         ]);
 
-        $result = $this->gemini->generateSeoTags($request->input('content'));
+        $result = $this->ai->generateSeoTags($request->input('content'));
 
-        // Clean markdown code blocks if present
+        // Clean markdown code blocks if present and parse JSON
         if (!empty($result['content'])) {
             $jsonString = $result['content'];
-            $jsonString = preg_replace('/^```json\s*|\s*```$/', '', $jsonString);
-            $result['content'] = json_decode($jsonString, true);
+
+            // Remove markdown code blocks (```json, ```, etc)
+            $jsonString = preg_replace('/^```(?:json)?\s*/i', '', $jsonString);
+            $jsonString = preg_replace('/\s*```$/', '', $jsonString);
+            $jsonString = trim($jsonString);
+
+            // Try to parse JSON
+            $decoded = json_decode($jsonString, true);
+
+            if ($decoded !== null) {
+                $result['content'] = $decoded;
+            } else {
+                // If JSON parsing failed, try to extract data manually
+                $result['content'] = [
+                    'meta_title' => '',
+                    'meta_description' => '',
+                    'keywords' => ''
+                ];
+
+                // Try regex extraction as fallback
+                if (preg_match('/"meta_title"\s*:\s*"([^"]+)"/', $jsonString, $m)) {
+                    $result['content']['meta_title'] = $m[1];
+                }
+                if (preg_match('/"meta_description"\s*:\s*"([^"]+)"/', $jsonString, $m)) {
+                    $result['content']['meta_description'] = $m[1];
+                }
+                if (preg_match('/"keywords"\s*:\s*"([^"]+)"/', $jsonString, $m)) {
+                    $result['content']['keywords'] = $m[1];
+                }
+            }
         }
 
         return response()->json($result);

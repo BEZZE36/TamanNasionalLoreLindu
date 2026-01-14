@@ -28,17 +28,34 @@ class FloraController extends Controller
             });
         }
 
+        // Handle sort
+        $sort = $request->get('sort', 'newest');
+        match ($sort) {
+            'alphabetical' => $query->orderBy('name', 'asc'),
+            'popular' => $query->orderBy('view_count', 'desc'),
+            default => null, // Already ordered by default
+        };
+
         $flora = $query->paginate(12)->withQueryString();
         $categories = Flora::CATEGORIES;
-        $featuredFlora = Flora::active()->featured()->take(3)->get();
+        $featuredFlora = Flora::active()->featured()->take(10)->get();
 
         // Collect current filters
         $filters = [
             'search' => $request->search,
             'category' => $request->category,
+            'sort' => $request->sort ?? 'newest',
         ];
 
-        return \Inertia\Inertia::render('Public/Flora/Index', compact('flora', 'categories', 'featuredFlora', 'filters'));
+        // Calculate stats for hero
+        $stats = [
+            'totalFlora' => Flora::active()->count(),
+            'totalEndemik' => Flora::active()->where('category', 'endemik')->count(),
+            'totalLangka' => Flora::active()->where('category', 'langka')->count(),
+            'totalViews' => Flora::active()->sum('view_count'),
+        ];
+
+        return \Inertia\Inertia::render('Public/Flora/Index', compact('flora', 'categories', 'featuredFlora', 'filters', 'stats'));
     }
 
     /**
@@ -50,12 +67,23 @@ class FloraController extends Controller
             abort(404);
         }
 
-        $flora->load([
-            'images',
-            'comments' => fn($q) => $q->where('is_approved', true)->with('user')->orderBy('created_at', 'desc')
-        ]);
-
+        $flora->load(['images']);
         $flora->increment('view_count');
+
+        // Load comments with replies and admin support
+        $comments = $flora->comments()
+            ->whereNull('parent_id')
+            ->where('is_approved', true)
+            ->with([
+                'user',
+                'admin',
+                'replies' => function ($q) {
+                    $q->where('is_approved', true)->with(['user', 'admin'])->orderBy('created_at', 'asc');
+                }
+            ])
+            ->orderByDesc('is_pinned')
+            ->orderByDesc('created_at')
+            ->get();
 
         // Get related flora
         $relatedFlora = Flora::active()
@@ -64,7 +92,7 @@ class FloraController extends Controller
             ->take(3)
             ->get();
 
-        return \Inertia\Inertia::render('Public/Flora/Show', compact('flora', 'relatedFlora'));
+        return \Inertia\Inertia::render('Public/Flora/Show', compact('flora', 'relatedFlora', 'comments'));
     }
 }
 

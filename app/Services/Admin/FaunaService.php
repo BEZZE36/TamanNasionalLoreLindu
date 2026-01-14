@@ -82,13 +82,19 @@ class FaunaService
             $imageData = ImageService::storeToDatabase($request->file('image'));
             $updateData['image_data'] = $imageData['data'];
             $updateData['image_mime'] = $imageData['mime'];
-            $updateData['image_path'] = null;
+            // Clear old image_path if exists but don't set to null if column is not nullable
+            if ($fauna->image_path) {
+                $updateData['image_path'] = '';
+            }
         } elseif ($request->filled('image_data')) {
             $imageData = $this->processBase64Image($request->image_data);
             if ($imageData) {
                 $updateData['image_data'] = $imageData;
                 $updateData['image_mime'] = 'image/jpeg';
-                $updateData['image_path'] = null;
+                // Clear old image_path if exists but don't set to null if column is not nullable
+                if ($fauna->image_path) {
+                    $updateData['image_path'] = '';
+                }
             }
         }
 
@@ -182,6 +188,7 @@ class FaunaService
         $newFauna->name = $fauna->name . ' (Salinan)';
         $newFauna->slug = null;
         $newFauna->view_count = 0;
+        $newFauna->is_active = true;
         $newFauna->sort_order = Fauna::max('sort_order') + 1;
         $newFauna->save();
 

@@ -5,12 +5,24 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\FaunaComment;
 use App\Models\Fauna;
+use App\Services\NotificationService;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class AdminFaunaCommentController extends Controller
 {
+    protected NotificationService $notificationService;
+    protected PushNotificationService $pushNotificationService;
+
+    public function __construct(
+        NotificationService $notificationService,
+        PushNotificationService $pushNotificationService
+    ) {
+        $this->notificationService = $notificationService;
+        $this->pushNotificationService = $pushNotificationService;
+    }
     public function index(Request $request)
     {
         $query = FaunaComment::with(['user', 'admin', 'fauna', 'replies.user', 'replies.admin'])
@@ -91,10 +103,25 @@ class AdminFaunaCommentController extends Controller
             'is_approved' => true,
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Balasan berhasil ditambahkan'
-        ]);
+        // Send notification to original commenter and thread participants
+        $fauna = $comment->fauna;
+        if ($fauna && $comment->user_id) {
+            $participantUserIds = FaunaComment::where('fauna_id', $comment->fauna_id)
+                ->where(function ($q) use ($comment) {
+                    $q->where('id', $comment->id)->orWhere('parent_id', $comment->id);
+                })
+                ->whereNotNull('user_id')
+                ->pluck('user_id')->unique()->toArray();
+
+            $url = route('fauna.show', $fauna->slug);
+            $this->notificationService->notifyCommentReply($comment->user_id, $participantUserIds, 'Fauna', $fauna->name, $url);
+
+            foreach (array_unique(array_filter(array_merge([$comment->user_id], $participantUserIds))) as $userId) {
+                $this->pushNotificationService->notifyCommentReply($userId, 'Fauna', $fauna->name, $url);
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'Balasan berhasil ditambahkan']);
     }
 
     public function destroy(FaunaComment $comment)

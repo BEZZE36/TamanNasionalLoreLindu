@@ -58,7 +58,13 @@ onMounted(() => {
         { opacity: 0, y: 20 }, 
         { opacity: 1, y: 0, duration: 0.4, stagger: 0.06, ease: 'power2.out', delay: 0.3 }
     );
+    
+    // Auto-check status every 10 seconds to redirect when reactivated
+    statusCheckInterval = setInterval(checkStatus, 10000);
 });
+
+// Auto status check interval
+let statusCheckInterval = null;
 
 // Check if user is still blocked
 const checkStatus = async () => {
@@ -73,13 +79,14 @@ const checkStatus = async () => {
         if (response.ok) {
             const data = await response.json();
             if (data.status === 'active') {
+                // User has been reactivated, redirect to homepage
+                if (statusCheckInterval) clearInterval(statusCheckInterval);
                 window.location.href = '/';
                 return;
             }
         }
-        window.location.reload();
     } catch (e) {
-        window.location.reload();
+        console.warn('Failed to check status:', e);
     } finally {
         isCheckingStatus.value = false;
     }

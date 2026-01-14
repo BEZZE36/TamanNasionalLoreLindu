@@ -15,7 +15,7 @@ class ChatbotController extends Controller
         ]);
 
         $userMessage = $request->input('message');
-        
+
         Log::info('Chatbot request received: ' . $userMessage);
 
         // System Instruction / Context
@@ -39,63 +39,76 @@ class ChatbotController extends Controller
         Jika pertanyaan diluar konteks TNLL, jawab dengan sopan bahwa anda hanya bisa menjawab seputar TNLL.";
 
         try {
-            $apiKey = env('GEMINI_API_KEY');
-            
+            $apiKey = config('openrouter.api_key');
+            $model = config('openrouter.model');
+            $endpoint = config('openrouter.endpoint');
+
             if (empty($apiKey)) {
-                Log::error('Gemini API Key is missing');
+                Log::error('OpenRouter API Key is missing');
                 return response()->json([
                     'reply' => 'API Key tidak dikonfigurasi. Hubungi administrator.'
                 ], 500);
             }
-            
-            Log::info('Calling Gemini API with key: ' . substr($apiKey, 0, 10) . '...');
-            
-            // Direct HTTP call to Gemini API with timeout
-            // Note: withoutVerifying() is used for local development due to Laragon SSL cert issues
-            $response = Http::timeout(30)
+
+            Log::info('Calling OpenRouter API', [
+                'model' => $model
+            ]);
+
+            $response = Http::timeout(60)
                 ->withoutVerifying()
                 ->withHeaders([
+                    'Authorization' => 'Bearer ' . $apiKey,
+                    'HTTP-Referer' => config('openrouter.site_url', config('app.url')),
+                    'X-Title' => config('openrouter.site_name', config('app.name')),
                     'Content-Type' => 'application/json',
                 ])
-                ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key={$apiKey}", [
-                    'contents' => [
+                ->post($endpoint, [
+                    'model' => $model,
+                    'messages' => [
                         [
-                            'parts' => [
-                                [
-                                    'text' => $systemContext . "\n\nUser: " . $userMessage . "\nAI:"
-                                ]
-                            ]
+                            'role' => 'system',
+                            'content' => $systemContext
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => $userMessage
                         ]
                     ]
                 ]);
 
-            Log::info('Gemini API Response Status: ' . $response->status());
-            Log::info('Gemini API Response Body: ' . substr($response->body(), 0, 500));
+            Log::info('OpenRouter API Response Status: ' . $response->status());
 
             if ($response->successful()) {
                 $data = $response->json();
-                $reply = $data['candidates'][0]['content']['parts'][0]['text'] ?? 'Maaf, saya tidak dapat memproses permintaan Anda.';
-                
+                $reply = $data['choices'][0]['message']['content'] ?? 'Maaf, saya tidak dapat memproses permintaan Anda.';
+
                 Log::info('Chatbot reply: ' . substr($reply, 0, 100));
-                
+
                 return response()->json([
                     'reply' => $reply
                 ]);
             } else {
-                Log::error('Gemini API Error Status: ' . $response->status());
-                Log::error('Gemini API Error Body: ' . $response->body());
+                Log::error('OpenRouter API Error', [
+                    'status' => $response->status(),
+                    'body' => substr($response->body(), 0, 500)
+                ]);
+
+                if ($response->status() === 429) {
+                    return response()->json([
+                        'reply' => 'Layanan AI sedang sibuk. Silakan coba lagi dalam beberapa saat.'
+                    ], 503);
+                }
+
                 return response()->json([
-                    'reply' => 'API Error: ' . $response->status() . ' - Silakan coba lagi.'
+                    'reply' => 'Terjadi kesalahan pada layanan AI. Silakan coba lagi.'
                 ], 500);
             }
 
         } catch (\Exception $e) {
-            Log::error('Gemini Chatbot Exception: ' . $e->getMessage());
-            Log::error('Gemini Chatbot Trace: ' . $e->getTraceAsString());
+            Log::error('OpenRouter Chatbot Exception: ' . $e->getMessage());
             return response()->json([
-                'reply' => 'Error: ' . $e->getMessage()
+                'reply' => 'Terjadi kesalahan. Silakan coba lagi nanti.'
             ], 500);
         }
     }
 }
-

@@ -82,7 +82,6 @@ const applyFilters = () => {
 };
 
 const toggleStatus = (admin) => {
-    if (admin.role === 'super_admin') return;
     isToggling.value = admin.id;
     
     const index = localAdmins.value.findIndex(a => a.id === admin.id);
@@ -336,7 +335,7 @@ const formatDate = (date) => {
                                 <div class="flex items-center justify-center gap-1">
                                     <!-- Toggle Status -->
                                     <button 
-                                        v-if="admin.role !== 'super_admin'"
+                                        v-if="admin.can_toggle"
                                         @click="toggleStatus(admin)"
                                         :disabled="isToggling === admin.id"
                                         :class="[

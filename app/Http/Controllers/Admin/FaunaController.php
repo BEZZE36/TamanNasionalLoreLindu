@@ -6,16 +6,80 @@ use App\Http\Controllers\Controller;
 use App\Models\Fauna;
 use App\Models\FaunaImage;
 use App\Services\Admin\FaunaService;
+use App\Services\NotificationService;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class FaunaController extends Controller
 {
     protected FaunaService $faunaService;
+    protected NotificationService $notificationService;
+    protected PushNotificationService $pushNotificationService;
 
-    public function __construct(FaunaService $faunaService)
-    {
+    public function __construct(
+        FaunaService $faunaService,
+        NotificationService $notificationService,
+        PushNotificationService $pushNotificationService
+    ) {
         $this->faunaService = $faunaService;
+        $this->notificationService = $notificationService;
+        $this->pushNotificationService = $pushNotificationService;
+    }
+
+    public function dashboard(Request $request)
+    {
+        $period = $request->get('period', 30);
+        $startDate = now()->subDays($period);
+
+        $stats = [
+            'total' => Fauna::count(),
+            'published' => Fauna::where('is_active', true)->count(),
+            'draft' => Fauna::where('is_active', false)->count(),
+            'featured' => Fauna::where('is_featured', true)->count(),
+            'endangered' => Fauna::where('category', 'langka')->count(),
+            'endemic' => Fauna::where('category', 'endemik')->count(),
+            'total_views' => Fauna::sum('view_count'),
+            'total_comments' => \App\Models\FaunaComment::count(),
+        ];
+
+        // Generate viewsChart data based on created_at dates
+        $viewsChart = collect(range(0, $period - 1))->map(function ($i) use ($startDate) {
+            $date = $startDate->copy()->addDays($i);
+            return [
+                'date' => $date->format('d M'),
+                'views' => Fauna::whereDate('created_at', $date)->sum('view_count'),
+            ];
+        })->values()->toArray();
+
+        $topFauna = Fauna::orderBy('view_count', 'desc')
+            ->take(10)
+            ->get()
+            ->map(fn($f) => [
+                'id' => $f->id,
+                'name' => $f->name,
+                'category' => $f->category,
+                'views_count' => $f->view_count,
+            ]);
+
+        $recentFauna = Fauna::latest()
+            ->take(8)
+            ->get()
+            ->map(fn($f) => [
+                'id' => $f->id,
+                'name' => $f->name,
+                'scientific_name' => $f->scientific_name,
+                'category' => $f->category,
+                'image_url' => $f->image_url,
+            ]);
+
+        return \Inertia\Inertia::render('Admin/Fauna/Dashboard', [
+            'stats' => $stats,
+            'viewsChart' => $viewsChart,
+            'topFauna' => $topFauna,
+            'recentFauna' => $recentFauna,
+            'period' => $period,
+        ]);
     }
 
     public function index(Request $request)
@@ -72,16 +136,32 @@ class FaunaController extends Controller
             'description' => 'nullable|string',
             'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
             'habitat' => 'nullable|string|max:255',
-            'conservation_status' => 'required|in:LC,NT,VU,EN,CR',
+            'conservation_status' => 'nullable|in:LC,NT,VU,EN,CR',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string',
             'category' => 'required|in:umum,langka,endemik',
             'is_featured' => 'boolean',
             'is_active' => 'boolean',
-            'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'gallery' => 'nullable|array',
+            'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
-        $this->faunaService->createFauna($validated, $request);
+        $fauna = $this->faunaService->createFauna($validated, $request);
+
+        // Send notifications to all users
+        if ($fauna->is_active) {
+            $url = route('fauna.show', $fauna->slug);
+            $this->notificationService->notifyNewFauna(
+                $fauna->name,
+                $fauna->description ?? '',
+                $url
+            );
+            $this->pushNotificationService->notifyNewFauna(
+                $fauna->name,
+                $fauna->description ?? '',
+                $url
+            );
+        }
 
         return redirect()->route('admin.fauna.index')
             ->with('success', 'Fauna berhasil ditambahkan.');
@@ -105,13 +185,14 @@ class FaunaController extends Controller
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'habitat' => 'nullable|string|max:255',
-            'conservation_status' => 'required|in:LC,NT,VU,EN,CR',
+            'conservation_status' => 'nullable|in:LC,NT,VU,EN,CR',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string',
             'category' => 'required|in:umum,langka,endemik',
             'is_featured' => 'boolean',
             'is_active' => 'boolean',
-            'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'gallery' => 'nullable|array',
+            'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         $this->faunaService->updateFauna($fauna, $validated, $request);

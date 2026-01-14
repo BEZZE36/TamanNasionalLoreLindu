@@ -203,6 +203,7 @@ class GalleryService
         $newGallery->title = $gallery->title . ' (Salinan)';
         $newGallery->slug = null;
         $newGallery->view_count = 0;
+        $newGallery->is_active = true;
         $newGallery->sort_order = Gallery::max('sort_order') + 1;
         $newGallery->created_at = now();
         $newGallery->updated_at = now();

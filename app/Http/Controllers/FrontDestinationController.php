@@ -168,7 +168,22 @@ class FrontDestinationController extends Controller
             ->take(3)
             ->get();
 
-        return \Inertia\Inertia::render('Public/Destinations/Show', compact('destination', 'relatedDestinations'));
+        // Fetch destination comments (visible only)
+        $comments = $destination->comments()
+            ->whereNull('parent_id')
+            ->where('is_visible', true)
+            ->with([
+                'user',
+                'admin',
+                'replies' => function ($q) {
+                    $q->where('is_visible', true)->with(['user', 'admin'])->orderBy('created_at', 'asc');
+                }
+            ])
+            ->orderByDesc('is_pinned')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return \Inertia\Inertia::render('Public/Destinations/Show', compact('destination', 'relatedDestinations', 'comments'));
     }
 
     /**

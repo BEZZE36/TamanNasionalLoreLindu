@@ -45,20 +45,27 @@ const copyOrderNumber = async () => {
     }
 };
 
+// Normalize legacy statuses to new 4 statuses
+const normalizeStatus = (status) => {
+    const mapping = {
+        'pending': 'pending',
+        'awaiting_cash': 'pending',
+        'paid': 'confirmed',
+        'confirmed': 'confirmed',
+        'used': 'used',
+        'cancelled': 'cancelled',
+        'expired': 'cancelled',
+        'refunded': 'cancelled'
+    };
+    return mapping[status] || status;
+};
+
+const normalizedStatus = computed(() => normalizeStatus(props.booking?.status));
+
 // Status display helpers
 const statusConfig = computed(() => {
-    const status = props.booking?.status;
-    if (status === 'awaiting_cash') {
-        return {
-            icon: 'banknote',
-            bgClass: 'from-amber-500 to-orange-500',
-            glowClass: 'shadow-amber-500/30',
-            ringClass: 'ring-amber-400/30',
-            title: 'Menunggu Pembayaran Tunai',
-            subtitle: 'Pesanan Anda telah dikonfirmasi. Silakan lakukan pembayaran tunai di loket kasir TNLL.',
-            emoji: '🏧'
-        };
-    } else if (status === 'paid' || status === 'confirmed') {
+    const status = normalizedStatus.value;
+    if (status === 'confirmed') {
         return {
             icon: 'check',
             bgClass: 'from-emerald-500 to-teal-500',
@@ -67,6 +74,16 @@ const statusConfig = computed(() => {
             title: 'Pembayaran Berhasil!',
             subtitle: 'Terima kasih! E-Ticket Anda sudah siap digunakan.',
             emoji: '🎉'
+        };
+    } else if (status === 'pending') {
+        return {
+            icon: 'banknote',
+            bgClass: 'from-amber-500 to-orange-500',
+            glowClass: 'shadow-amber-500/30',
+            ringClass: 'ring-amber-400/30',
+            title: 'Menunggu Pembayaran',
+            subtitle: 'Silakan selesaikan pembayaran untuk mengaktifkan tiket Anda.',
+            emoji: '🏧'
         };
     } else {
         return {
@@ -183,7 +200,7 @@ onMounted(() => {
     }, pageRef.value);
 
     // Trigger confetti for successful payments
-    if (props.booking?.status === 'paid' || props.booking?.status === 'confirmed') {
+    if (props.booking?.status === 'confirmed') {
         setTimeout(createConfetti, 500);
     }
 });
@@ -271,9 +288,9 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
                         <span :class="['px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold',
-                            booking.status === 'paid' || booking.status === 'confirmed' 
+                            normalizedStatus === 'confirmed' 
                                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
-                                : booking.status === 'awaiting_cash' 
+                                : normalizedStatus === 'pending' 
                                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
                                     : 'bg-blue-500/20 text-blue-300 border border-blue-500/30']">
                             {{ booking.status_label }}
@@ -324,31 +341,40 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <!-- Cash Payment Instructions -->
-                <div v-if="booking.status === 'awaiting_cash'" 
+                <!-- Pending Payment QR Code -->
+                <div v-if="normalizedStatus === 'pending'" 
                     class="info-card bg-amber-500/10 backdrop-blur-xl rounded-2xl border border-amber-500/20 p-5 sm:p-6 mb-4 sm:mb-6">
                     <h3 class="font-bold text-amber-300 mb-4 flex items-center gap-2 text-sm sm:text-base">
-                        <MapPin class="w-4 h-4 sm:w-5 sm:h-5" />
-                        Instruksi Pembayaran Tunai
+                        <QrCode class="w-4 h-4 sm:w-5 sm:h-5" />
+                        QR Code Pembayaran Tunai
                     </h3>
-                    <div class="space-y-3 text-amber-200/80 text-xs sm:text-sm">
-                        <p><strong class="text-amber-200">Lokasi:</strong> Loket Kasir Taman Nasional Lore Lindu</p>
-                        <p><strong class="text-amber-200">Jam Operasional:</strong> 08:00 - 16:00 WITA</p>
-                        <p>
-                            <strong class="text-amber-200">Kode Booking:</strong> 
-                            <span class="font-mono font-bold text-amber-100 bg-amber-500/20 px-2 py-0.5 rounded ml-1">{{ booking.order_number }}</span>
-                        </p>
-                        <div class="pt-3 border-t border-amber-500/20">
-                            <p class="flex items-start gap-2">
-                                <Clock class="w-4 h-4 flex-shrink-0 mt-0.5" />
-                                <span>Pembayaran harus diselesaikan paling lambat <strong class="text-amber-100">1 hari sebelum tanggal kunjungan</strong>.</span>
+                    <div class="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+                        <!-- QR Code -->
+                        <div class="bg-white p-3 sm:p-4 rounded-xl shadow-lg">
+                            <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(booking.order_number)}`" 
+                                 :alt="`QR Code ${booking.order_number}`"
+                                 class="w-28 h-28 sm:w-32 sm:h-32 object-contain">
+                            <p class="mt-2 text-center text-[10px] sm:text-xs font-mono font-bold text-amber-600 bg-amber-50 rounded-lg py-1">
+                                {{ booking.order_number }}
                             </p>
+                        </div>
+                        <!-- Instructions -->
+                        <div class="flex-1 text-center sm:text-left space-y-3 text-amber-200/80 text-xs sm:text-sm">
+                            <p><strong class="text-amber-200">Lokasi Pembayaran:</strong> Loket Kasir TNLL</p>
+                            <p><strong class="text-amber-200">Jam Operasional:</strong> 08:00 - 16:00 WITA</p>
+                            <p><strong class="text-amber-200">Total Bayar:</strong> <span class="font-bold text-amber-100">{{ booking.formatted_total_amount }}</span></p>
+                            <div class="pt-3 border-t border-amber-500/20">
+                                <p class="flex items-start gap-2">
+                                    <Clock class="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                    <span>Tunjukkan QR Code ini ke petugas kasir untuk pembayaran</span>
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- E-Ticket Preview (for paid bookings) -->
-                <div v-if="(booking.status === 'paid' || booking.status === 'confirmed') && booking.tickets?.length > 0" 
+                <!-- E-Ticket Preview (for confirmed bookings) -->
+                <div v-if="normalizedStatus === 'confirmed' && booking.tickets?.length > 0" 
                     class="info-card bg-white/10 backdrop-blur-xl rounded-2xl border border-emerald-500/20 p-5 sm:p-6 mb-4 sm:mb-6">
                     <h3 class="font-bold text-white mb-4 flex items-center gap-2 text-sm sm:text-base">
                         <QrCode class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
@@ -375,7 +401,14 @@ onBeforeUnmount(() => {
 
                 <!-- Actions -->
                 <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                    <a v-if="booking.status === 'paid' || booking.status === 'confirmed'" 
+                    <!-- View Detail Button - for all statuses -->
+                    <Link :href="`/my-bookings/${booking.order_number}`" 
+                        class="action-btn group inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 sm:py-3.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold text-sm rounded-xl hover:from-blue-400 hover:to-indigo-500 transition-all shadow-xl shadow-blue-500/30 hover:shadow-blue-500/40 hover:-translate-y-0.5">
+                        <Ticket class="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-12 transition-transform" />
+                        Lihat Detail Tiket
+                    </Link>
+                    
+                    <a v-if="normalizedStatus === 'confirmed'" 
                         :href="`/booking/${booking.order_number}/ticket`" 
                         target="_blank"
                         class="action-btn group inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 sm:py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-sm rounded-xl hover:from-emerald-400 hover:to-teal-500 transition-all shadow-xl shadow-emerald-500/30 hover:shadow-emerald-500/40 hover:-translate-y-0.5">

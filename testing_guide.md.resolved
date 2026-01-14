@@ -1,0 +1,265 @@
+# Testing Guide: Article & News Extended Features
+
+## Prerequisites
+- Admin login: `/admin/login`
+- User login: `/login` (for push notifications test)
+- VAPID keys configured in `.env`
+
+---
+
+## 1. Dashboard Testing
+
+### Articles Dashboard
+1. Navigate to **Admin → Artikel → Dashboard**
+2. Verify:
+   - [ ] Total artikel, views, likes, comments stats displayed
+   - [ ] Views per day chart shows data
+   - [ ] Peak hours chart shows data
+   - [ ] Top 5 articles list displayed
+   - [ ] Top referrers displayed
+   - [ ] Device breakdown (Desktop/Mobile/Tablet) shown
+   - [ ] Average read time displayed
+
+### News Dashboard
+1. Navigate to **Admin → Berita → Dashboard**
+2. Same checks as above
+
+---
+
+## 2. Enhanced CRUD
+
+### Create Article with New Fields
+1. Go to **Admin → Artikel → Tambah Artikel**
+2. Fill in:
+   - [ ] Title, Excerpt, Content
+   - [ ] Featured Image
+   - [ ] Category, Author Name
+3. Expand **SEO Settings**:
+   - [ ] Enter Meta Title (max 60 chars)
+   - [ ] Enter Meta Description (max 160 chars)  
+   - [ ] Enter Meta Keywords
+4. Expand **Publishing**:
+   - [ ] Toggle "Pin di Atas" ON
+   - [ ] Set scheduled date/time (future)
+   - [ ] Select locale (ID/EN)
+5. Check **Word Count** displays at bottom
+6. Click **Simpan**
+7. Verify article saved with all fields
+
+### Edit Article
+1. Edit an existing article
+2. Change content
+3. Verify **auto-save** indicator appears after 30s inactivity
+4. Click **Riwayat Revisi** button
+5. Verify revision history modal shows previous versions
+6. Click restore on a revision, verify content restored
+
+---
+
+## 3. Archive & Unarchive
+
+1. Go to article list
+2. Click **Archive** on an article
+3. Verify article is archived (status change or removed from list)
+4. Go to archived view (if exists) or use filter
+5. Click **Unarchive**
+6. Verify article is restored
+
+---
+
+## 4. Bulk Operations
+
+### Bulk Publish
+1. Select multiple unpublished articles (checkbox)
+2. Click **Bulk Actions → Publish**
+3. Verify all selected articles are now published
+
+### Bulk Archive
+1. Select multiple articles
+2. Click **Bulk Actions → Archive**
+3. Verify all selected articles are archived
+
+### Bulk Delete
+1. Select multiple articles
+2. Click **Hapus Terpilih**
+3. Confirm deletion
+4. Verify articles are deleted
+
+---
+
+## 5. Tags Management
+
+### Create Tag
+1. Go to **Admin → Artikel → Kelola Tag**
+2. Click **Tambah Tag**
+3. Enter tag name (e.g., "Konservasi")
+4. Click **Tambah**
+5. Verify tag appears in list
+
+### Edit Tag
+1. Hover over a tag
+2. Click edit icon
+3. Change name
+4. Click **Simpan**
+5. Verify name updated
+
+### Delete Tag
+1. Hover over a tag
+2. Click delete icon
+3. Confirm deletion
+4. Verify tag removed
+
+### Bulk Delete Tags
+1. Select multiple tags (checkbox)
+2. Click **Hapus X dipilih**
+3. Confirm
+4. Verify tags removed
+
+### AI Tag Suggestions (if Gemini API configured)
+1. Create/Edit an article
+2. Look for "Suggest Tags" button/feature
+3. Verify AI-generated tag suggestions appear
+
+---
+
+## 6. Comments Moderation
+
+### View Comments
+1. Go to **Admin → Artikel → Lihat Komentar**
+2. Verify:
+   - [ ] Comments list displayed
+   - [ ] Filter by status (pending/approved/rejected/reported)
+   - [ ] Filter by article
+   - [ ] Search works
+
+### Approve/Reject Comment
+1. Find a pending comment
+2. Click **Approve** → verify status changed
+3. Click **Reject** → verify status changed
+
+### Pin/Unpin Comment
+1. Click pin icon on a comment
+2. Verify comment is pinned (appears first)
+3. Click again to unpin
+
+### Block User
+1. Click **Block User** on a comment
+2. Enter reason (optional)
+3. Click confirm
+4. Verify user is blocked
+
+### Batch Approve/Reject
+1. Select multiple comments
+2. Click **Batch Approve** or **Batch Reject**
+3. Verify all selected comments updated
+
+### Reply to Comment
+1. Click **Reply** on a comment
+2. Enter reply text
+3. Submit
+4. Verify reply appears under comment
+
+---
+
+## 7. Push Notifications
+
+### Enable Push Notifications (User Side)
+1. Login as regular user
+2. Go to **Profil → Notifikasi** tab
+3. Click toggle to enable push notifications
+4. Browser should ask for permission → **Allow**
+5. Verify toggle shows "Aktif"
+
+### Test Push on Article Publish
+1. Login as admin
+2. Create new article (unpublished)
+3. Edit article → set `is_published = true` → Save
+4. Browser notification should appear:
+   - Title: "📰 Artikel Baru: [title]"
+   - Body: Article excerpt
+5. Click notification → opens article page
+
+---
+
+## 8. Analytics & Tracking (Public Side)
+
+### View Tracking
+1. Go to a public article page
+2. Open DevTools → Network tab
+3. Verify POST to `/articles/{id}/track-view` is sent
+4. Refresh dashboard → view count should increase
+
+### Time Tracking
+1. Stay on article page for 10+ seconds
+2. Navigate away or close tab
+3. Verify POST to `/articles/{id}/track-time` is sent (beforeunload)
+
+---
+
+## 9. User Interactions (Public Side)
+
+### Like Article
+1. Login as user
+2. Go to article detail page
+3. Click **Like** button (heart icon)
+4. Verify count increases, icon fills
+5. Click again to unlike
+
+### Favorite Article
+1. Click **Favorite** button (bookmark icon)
+2. Verify article added to favorites
+3. Go to **Wishlist/Favorites** page
+4. Verify article appears
+
+### Social Share
+1. On article page, find share buttons
+2. Test each:
+   - [ ] Facebook → opens share dialog
+   - [ ] Twitter → opens tweet dialog
+   - [ ] WhatsApp → opens WA with link
+   - [ ] Telegram → opens TG share
+   - [ ] LinkedIn → opens LI share
+   - [ ] Email → opens email client
+   - [ ] Copy Link → link copied to clipboard
+
+---
+
+## 10. News Feature Parity
+
+Repeat tests 1-9 for **News** section:
+- Dashboard: `/admin/news/dashboard`
+- Tags: `/admin/news/tags`
+- Comments: `/admin/news/comments`
+- CRUD: Same SEO, scheduling, auto-save features
+
+---
+
+## Quick Verification Commands
+
+```bash
+# Check routes exist
+php artisan route:list --path=articles
+php artisan route:list --path=news
+php artisan route:list --path=push
+
+# Check migrations ran
+php artisan migrate:status | grep -E "(push_subscriptions|article_tags|article_views)"
+```
+
+---
+
+## Expected Results Summary
+
+| Feature | Test Result |
+|---------|-------------|
+| Dashboard Stats | ⬜ |
+| SEO Fields | ⬜ |
+| Scheduling | ⬜ |
+| Auto-save | ⬜ |
+| Revisions | ⬜ |
+| Tags CRUD | ⬜ |
+| Comment Moderation | ⬜ |
+| Push Notifications | ⬜ |
+| View Tracking | ⬜ |
+| Like/Favorite | ⬜ |
+| Social Share | ⬜ |

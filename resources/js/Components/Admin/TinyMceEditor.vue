@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
-import { Zap, RefreshCw, Maximize2, Minus, Search, X, Sparkles } from 'lucide-vue-next';
+import { Zap, RefreshCw, Maximize2, Minus, Search, X, Sparkles, Languages } from 'lucide-vue-next';
 
 const props = defineProps({
     modelValue: { type: String, default: '' },
@@ -167,26 +167,42 @@ const rewriteContent = async () => {
     finally { loading.value = false; }
 };
 
-const executeDirectAction = async (action) => {
-    const selectedText = editorInstance.selection.getContent({ format: 'text' });
-    const allContent = editorInstance.getContent({ format: 'text' });
-    const content = selectedText.trim() ? selectedText : allContent;
+const executeDirectAction = async (action, options = {}) => {
+    // For translation, use HTML format to preserve formatting
+    const isTranslate = action === 'translate_id_en' || action === 'translate_en_id';
+    const format = isTranslate ? 'html' : 'text';
+    
+    const selectedContent = editorInstance.selection.getContent({ format });
+    const allContent = editorInstance.getContent({ format });
+    const content = selectedContent.trim() ? selectedContent : allContent;
     if (!content.trim()) { showToast('Tambahkan konten terlebih dahulu', 'error'); return; }
     loading.value = true;
     try {
-        const urls = { expand: '/admin/ai/expand', shorten: '/admin/ai/shorten', seo: '/admin/ai/seo-suggest' };
-        const res = await fetch(urls[action], {
+        // Map action to URL
+        let url = '/admin/ai/' + action;
+        let bodyData = { content };
+        
+        if (action === 'translate_id_en') {
+            url = '/admin/ai/translate';
+            bodyData.direction = 'id_to_en';
+        } else if (action === 'translate_en_id') {
+            url = '/admin/ai/translate';
+            bodyData.direction = 'en_to_id';
+        }
+        
+        const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
-            body: JSON.stringify({ content })
+            body: JSON.stringify(bodyData)
         });
         const data = await res.json();
         if (data.success && data.content) {
             if (action === 'seo') { seoResults.value = formatAIContent(data.content); seoResultsOpen.value = true; }
             else {
-                const formatted = formatAIContent(data.content);
-                if (selectedText.trim()) editorInstance.selection.setContent(formatted);
-                else editorInstance.setContent(formatted);
+                // For translation, don't format - it's already HTML
+                const resultContent = isTranslate ? data.content : formatAIContent(data.content);
+                if (selectedContent.trim()) editorInstance.selection.setContent(resultContent);
+                else editorInstance.setContent(resultContent);
                 showToast('AI berhasil!');
             }
         } else { showToast(data.error || 'AI gagal', 'error'); }
@@ -214,15 +230,15 @@ const executeDirectAction = async (action) => {
                     <button type="button" @click="executeDirectAction('shorten')" class="ai-btn from-pink-400 to-rose-500">
                         <Minus class="w-4 h-4" /><span>Shorten</span>
                     </button>
+                    <button type="button" @click="executeDirectAction('translate_id_en')" class="ai-btn from-teal-400 to-cyan-500">
+                        <Languages class="w-4 h-4" /><span>ID → EN</span>
+                    </button>
+                    <button type="button" @click="executeDirectAction('translate_en_id')" class="ai-btn from-cyan-400 to-blue-500">
+                        <Languages class="w-4 h-4" /><span>EN → ID</span>
+                    </button>
                     <button type="button" @click="executeDirectAction('seo')" class="ai-btn from-purple-400 to-violet-500">
                         <Search class="w-4 h-4" /><span>SEO</span>
                     </button>
-                </div>
-                <div v-if="loading" class="flex items-center justify-center gap-2">
-                    <div class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 rounded-full border border-white/20">
-                        <Sparkles class="w-4 h-4 text-cyan-400 animate-pulse" />
-                        <span class="text-xs font-bold text-white uppercase tracking-wider">Thinking...</span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -230,6 +246,18 @@ const executeDirectAction = async (action) => {
         <!-- TinyMCE Editor -->
         <div class="editor-container relative bg-white overflow-hidden border-2 border-t-0 border-gray-100 shadow-xl">
             <textarea :id="id" :name="name"></textarea>
+            <!-- AI Loading Skeleton Overlay - Plain Design -->
+            <div v-if="loading" class="absolute inset-0 bg-white/95 backdrop-blur-sm z-50 flex items-center justify-center p-8">
+                <div class="w-full max-w-lg space-y-4">
+                    <div class="skeleton-plain h-5 w-3/4 rounded"></div>
+                    <div class="skeleton-plain h-4 w-full rounded"></div>
+                    <div class="skeleton-plain h-4 w-11/12 rounded"></div>
+                    <div class="skeleton-plain h-4 w-full rounded"></div>
+                    <div class="skeleton-plain h-4 w-4/5 rounded"></div>
+                    <div class="skeleton-plain h-4 w-full rounded"></div>
+                    <div class="skeleton-plain h-4 w-9/12 rounded"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Footer -->
@@ -303,4 +331,85 @@ const executeDirectAction = async (action) => {
     background: linear-gradient(to right, var(--tw-gradient-stops));
 }
 .ai-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+
+/* Premium Skeleton Animations */
+@keyframes float-slow {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-20px) scale(1.05); }
+}
+
+@keyframes glow-ring {
+    0%, 100% { transform: scale(1); opacity: 0.4; }
+    50% { transform: scale(1.15); opacity: 0.6; }
+}
+
+@keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+}
+
+@keyframes neural {
+    0%, 100% { opacity: 0.5; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+@keyframes core-pulse {
+    0%, 100% { opacity: 0.9; transform: scale(1); box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+    50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 20px rgba(255,255,255,0.8); }
+}
+
+@keyframes progress-wave {
+    0% { width: 0%; }
+    25% { width: 40%; }
+    50% { width: 65%; }
+    75% { width: 85%; }
+    100% { width: 100%; }
+}
+
+@keyframes shimmer-fast {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+@keyframes bounce-stagger {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-5px); }
+}
+
+@keyframes premium-skeleton {
+    0% { background-position: -200% 0; opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { background-position: 200% 0; opacity: 0.6; }
+}
+
+.animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
+.animate-glow-ring { animation: glow-ring 2s ease-in-out infinite; }
+.animate-breathe { animation: breathe 2.5s ease-in-out infinite; }
+.animate-neural { animation: neural 1.5s ease-in-out infinite; }
+.animate-core-pulse { animation: core-pulse 1.5s ease-in-out infinite; }
+.animate-progress-wave { animation: progress-wave 2.5s ease-in-out infinite; }
+.animate-shimmer-fast { animation: shimmer-fast 1.5s ease-in-out infinite; }
+.animate-bounce-stagger { animation: bounce-stagger 1s ease-in-out infinite; }
+
+.skeleton-premium {
+    background: linear-gradient(90deg, 
+        rgba(139, 92, 246, 0.15) 0%, 
+        rgba(217, 70, 239, 0.25) 25%, 
+        rgba(236, 72, 153, 0.15) 50%,
+        rgba(217, 70, 239, 0.25) 75%,
+        rgba(139, 92, 246, 0.15) 100%);
+    background-size: 200% 100%;
+    animation: premium-skeleton 2s ease-in-out infinite;
+}
+
+@keyframes plain-shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.skeleton-plain {
+    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+    background-size: 200% 100%;
+    animation: plain-shimmer 1.5s ease-in-out infinite;
+}
 </style>

@@ -11,6 +11,9 @@ use App\Http\Controllers\Admin\DestinationController as AdminDestinationControll
 */
 
 Route::middleware(['auth:admin', 'menu.access'])->group(function () {
+    // Dashboard
+    Route::get('destinations/dashboard', [AdminDestinationController::class, 'dashboard'])->name('destinations.dashboard');
+
     // Statistics & Export (before resource)
     Route::get('destinations/statistics', [\App\Http\Controllers\Admin\DestinationStatsController::class, 'index'])->name('destinations.stats');
     Route::get('destinations/export/{format}', [\App\Http\Controllers\Admin\DestinationStatsController::class, 'export'])->name('destinations.export');

@@ -78,13 +78,19 @@ class FloraService
             $imageData = ImageService::storeToDatabase($request->file('image'));
             $updateData['image_data'] = $imageData['data'];
             $updateData['image_mime'] = $imageData['mime'];
-            $updateData['image_path'] = null;
+            // Clear old image_path if exists but don't set to null if column is not nullable
+            if ($flora->image_path) {
+                $updateData['image_path'] = '';
+            }
         } elseif ($request->filled('image_data')) {
             $imageData = $this->processBase64Image($request->image_data);
             if ($imageData) {
                 $updateData['image_data'] = $imageData;
                 $updateData['image_mime'] = 'image/jpeg';
-                $updateData['image_path'] = null;
+                // Clear old image_path if exists but don't set to null if column is not nullable
+                if ($flora->image_path) {
+                    $updateData['image_path'] = '';
+                }
             }
         }
 
@@ -178,6 +184,7 @@ class FloraService
         $newFlora->name = $flora->name . ' (Salinan)';
         $newFlora->slug = null;
         $newFlora->view_count = 0;
+        $newFlora->is_active = true;
         $newFlora->sort_order = Flora::max('sort_order') + 1;
         $newFlora->save();
 

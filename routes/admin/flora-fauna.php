@@ -17,6 +17,9 @@ Route::middleware(['auth:admin', 'menu.access'])->group(function () {
         Route::post('/bulk-delete', [AdminFloraController::class, 'bulkDelete'])->name('bulk-delete');
         Route::post('/reorder', [AdminFloraController::class, 'reorder'])->name('reorder');
 
+        // Dashboard
+        Route::get('/dashboard', [AdminFloraController::class, 'dashboard'])->name('dashboard');
+
         // Statistics
         Route::get('/statistics', [\App\Http\Controllers\Admin\FloraStatsController::class, 'index'])->name('stats');
 
@@ -47,6 +50,9 @@ Route::middleware(['auth:admin', 'menu.access'])->group(function () {
         // Bulk & Reorder
         Route::post('/bulk-delete', [AdminFaunaController::class, 'bulkDelete'])->name('bulk-delete');
         Route::post('/reorder', [AdminFaunaController::class, 'reorder'])->name('reorder');
+
+        // Dashboard
+        Route::get('/dashboard', [AdminFaunaController::class, 'dashboard'])->name('dashboard');
 
         // Statistics
         Route::get('/statistics', [\App\Http\Controllers\Admin\FaunaStatsController::class, 'index'])->name('stats');

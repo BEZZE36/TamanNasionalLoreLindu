@@ -4,7 +4,7 @@
  * Matches Destination Hero Design with GSAP animations
  */
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import PublicLayout from '@/Layouts/PublicLayout.vue';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -28,7 +28,11 @@ const contentRef = ref(null);
 const sectionRef = ref(null);
 const activeTab = ref(Object.keys(props.faqCategories)[0] || 'Umum');
 const openFaq = ref(null);
-const searchQuery = ref('');
+
+// Get initial search from URL query parameter
+const page = usePage();
+const urlSearch = new URLSearchParams(window?.location?.search || '').get('search') || '';
+const searchQuery = ref(urlSearch);
 const counters = ref({ faq: 0, categories: 0 });
 let ctx;
 

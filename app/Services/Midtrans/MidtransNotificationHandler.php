@@ -115,12 +115,26 @@ class MidtransNotificationHandler
     {
         $payment->paid_at = now();
 
-        $payment->booking->update([
-            'status' => Booking::STATUS_PAID,
+        $booking = $payment->booking;
+        $booking->update([
+            'status' => Booking::STATUS_CONFIRMED,
             'confirmed_at' => now(),
         ]);
 
-        $this->notificationService->notifyPaymentSuccess($payment->booking);
+        // Record coupon usage if coupon was used
+        if ($booking->discount_code && $booking->user_id) {
+            try {
+                $coupon = \App\Models\Coupon::findByCode($booking->discount_code);
+                if ($coupon) {
+                    $coupon->markAsUsed($booking->user_id, $booking->id);
+                    Log::info("Coupon {$coupon->code} marked as used for booking {$booking->order_number}");
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to mark coupon as used: ' . $e->getMessage());
+            }
+        }
+
+        $this->notificationService->notifyPaymentSuccess($booking);
     }
 
     /**
@@ -129,7 +143,7 @@ class MidtransNotificationHandler
     protected function handleFailedPayment(Payment $payment, string $status): void
     {
         $payment->booking->update([
-            'status' => Booking::STATUS_EXPIRED,
+            'status' => Booking::STATUS_CANCELLED,
             'expired_at' => now(),
         ]);
 

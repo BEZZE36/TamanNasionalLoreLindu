@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Jobs\SendNewsletterJob;
 use App\Models\NewsletterCampaign;
 use App\Models\NewsletterSubscriber;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class NewsletterController extends Controller
 {
+    use LogsActivity;
+
     /**
      * Display list of newsletter subscribers
      */
@@ -68,9 +71,10 @@ class NewsletterController extends Controller
         $subscriber->update([
             'is_active' => !$subscriber->is_active,
             'unsubscribed_at' => $subscriber->is_active ? now() : null,
-            // Set disabled_by_admin when admin disables, clear when admin enables
             'disabled_by_admin' => $wasActive ? true : false,
         ]);
+
+        $this->logToggle($subscriber, 'Newsletter Subscriber', 'is_active', $subscriber->is_active, $subscriber->email);
 
         $status = $subscriber->is_active ? 'diaktifkan' : 'dinonaktifkan';
         return back()->with('success', "Subscriber berhasil {$status}.");
@@ -81,6 +85,9 @@ class NewsletterController extends Controller
      */
     public function destroy(NewsletterSubscriber $subscriber)
     {
+        $email = $subscriber->email;
+        $this->logDelete($subscriber, 'Newsletter Subscriber', $email);
+
         $subscriber->delete();
         return back()->with('success', 'Subscriber berhasil dihapus.');
     }
@@ -95,9 +102,12 @@ class NewsletterController extends Controller
             'ids.*' => 'exists:newsletter_subscribers,id',
         ]);
 
+        $count = count($request->ids);
         NewsletterSubscriber::whereIn('id', $request->ids)->delete();
 
-        return back()->with('success', count($request->ids) . ' subscriber berhasil dihapus.');
+        $this->logBulk('delete', 'Newsletter Subscriber', $count);
+
+        return back()->with('success', $count . ' subscriber berhasil dihapus.');
     }
 
     /**
@@ -112,6 +122,8 @@ class NewsletterController extends Controller
         }
 
         $subscribers = $query->orderBy('email')->get();
+
+        $this->logExport('Newsletter Subscriber', 'CSV', $subscribers->count());
 
         $filename = 'newsletter_subscribers_' . date('Y-m-d') . '.csv';
         $headers = [
@@ -148,7 +160,6 @@ class NewsletterController extends Controller
     {
         $query = NewsletterCampaign::with('creator');
 
-        // Filter by status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
@@ -157,7 +168,6 @@ class NewsletterController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Stats
         $stats = [
             'total' => NewsletterCampaign::count(),
             'draft' => NewsletterCampaign::where('status', 'draft')->count(),
@@ -204,6 +214,8 @@ class NewsletterController extends Controller
             'created_by' => Auth::guard('admin')->id(),
         ]);
 
+        $this->logCreate($campaign, 'Newsletter Campaign', $campaign->subject);
+
         return redirect()->route('admin.newsletter.campaigns.edit', $campaign)
             ->with('success', 'Campaign berhasil dibuat.');
     }
@@ -236,12 +248,17 @@ class NewsletterController extends Controller
                 ->with('error', 'Campaign tidak dapat diedit.');
         }
 
+        $oldValues = $campaign->only(['subject', 'content']);
+
         $validated = $request->validate([
             'subject' => 'required|string|max:255',
             'content' => 'required|string',
         ]);
 
         $campaign->update($validated);
+
+        $newValues = $campaign->only(['subject', 'content']);
+        $this->logUpdate($campaign, 'Newsletter Campaign', $oldValues, $newValues, $campaign->subject);
 
         return back()->with('success', 'Campaign berhasil diperbarui.');
     }
@@ -255,6 +272,9 @@ class NewsletterController extends Controller
             return redirect()->route('admin.newsletter.campaigns.index')
                 ->with('error', 'Campaign tidak dapat dihapus.');
         }
+
+        $subject = $campaign->subject;
+        $this->logDelete($campaign, 'Newsletter Campaign', $subject);
 
         $campaign->delete();
 
@@ -297,6 +317,9 @@ class NewsletterController extends Controller
         // Dispatch job synchronously (no queue worker needed)
         try {
             dispatch_sync(new SendNewsletterJob($campaign));
+
+            $this->logSend($campaign, 'Newsletter Campaign', "{$campaign->subject} ke {$activeSubscribers} subscriber");
+
             return redirect()->route('admin.newsletter.campaigns.index')
                 ->with('success', "Campaign berhasil dikirim ke {$activeSubscribers} subscriber.");
         } catch (\Exception $e) {
@@ -321,6 +344,8 @@ class NewsletterController extends Controller
             'failed_count' => 0,
             'total_recipients' => 0,
         ]);
+
+        $this->logActivity('update', "Membatalkan pengiriman campaign: {$campaign->subject}", $campaign);
 
         return back()->with('success', 'Pengiriman campaign dibatalkan.');
     }

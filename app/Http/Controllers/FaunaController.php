@@ -18,8 +18,8 @@ class FaunaController extends Controller
             $query->byCategory($request->category);
         }
 
-        if ($request->filled('status')) {
-            $query->where('conservation_status', $request->status);
+        if ($request->filled('conservation_status')) {
+            $query->where('conservation_status', $request->conservation_status);
         }
 
         if ($request->filled('search')) {
@@ -32,18 +32,35 @@ class FaunaController extends Controller
             });
         }
 
+        // Handle sort
+        $sort = $request->get('sort', 'newest');
+        match ($sort) {
+            'alphabetical' => $query->orderBy('name', 'asc'),
+            'popular' => $query->orderBy('view_count', 'desc'),
+            default => null, // Already ordered by default
+        };
+
         $fauna = $query->paginate(12)->withQueryString();
         $categories = Fauna::CATEGORIES;
         $conservationStatuses = Fauna::CONSERVATION_STATUSES;
-        $featuredFauna = Fauna::active()->featured()->take(3)->get();
+        $featuredFauna = Fauna::active()->featured()->take(10)->get();
 
         $filters = [
             'search' => $request->search,
             'category' => $request->category,
-            'status' => $request->status,
+            'conservation_status' => $request->conservation_status,
+            'sort' => $request->sort ?? 'newest',
         ];
 
-        return \Inertia\Inertia::render('Public/Fauna/Index', compact('fauna', 'categories', 'conservationStatuses', 'featuredFauna', 'filters'));
+        // Calculate stats for hero
+        $stats = [
+            'totalFauna' => Fauna::active()->count(),
+            'totalEndemic' => Fauna::active()->where('category', 'endemik')->count(),
+            'totalEndangered' => Fauna::active()->whereNotNull('conservation_status')->count(),
+            'totalViews' => Fauna::active()->sum('view_count'),
+        ];
+
+        return \Inertia\Inertia::render('Public/Fauna/Index', compact('fauna', 'categories', 'conservationStatuses', 'featuredFauna', 'filters', 'stats'));
     }
 
     /**
@@ -55,12 +72,23 @@ class FaunaController extends Controller
             abort(404);
         }
 
-        $fauna->load([
-            'images',
-            'comments' => fn($q) => $q->where('is_approved', true)->with('user')->orderBy('created_at', 'desc')
-        ]);
-
+        $fauna->load(['images']);
         $fauna->increment('view_count');
+
+        // Load comments with replies and admin support
+        $comments = $fauna->comments()
+            ->whereNull('parent_id')
+            ->where('is_approved', true)
+            ->with([
+                'user',
+                'admin',
+                'replies' => function ($q) {
+                    $q->where('is_approved', true)->with(['user', 'admin'])->orderBy('created_at', 'asc');
+                }
+            ])
+            ->orderByDesc('is_pinned')
+            ->orderByDesc('created_at')
+            ->get();
 
         $relatedFauna = Fauna::active()
             ->where('category', $fauna->category)
@@ -68,7 +96,7 @@ class FaunaController extends Controller
             ->take(3)
             ->get();
 
-        return \Inertia\Inertia::render('Public/Fauna/Show', compact('fauna', 'relatedFauna'));
+        return \Inertia\Inertia::render('Public/Fauna/Show', compact('fauna', 'relatedFauna', 'comments'));
     }
 }
 

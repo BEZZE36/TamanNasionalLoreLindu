@@ -114,6 +114,16 @@ class MidtransService
             ];
         }
 
+        // Add discount as negative line item if exists
+        if ($booking->discount > 0) {
+            $items[] = [
+                'id' => 'DISCOUNT',
+                'price' => (int) -$booking->discount,
+                'quantity' => 1,
+                'name' => 'Diskon Promo' . ($booking->discount_code ? ' (' . $booking->discount_code . ')' : ''),
+            ];
+        }
+
         return [
             'transaction_details' => [
                 'order_id' => $booking->order_number,

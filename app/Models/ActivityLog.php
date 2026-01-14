@@ -36,6 +36,16 @@ class ActivityLog extends Model
         'view' => 'Melihat',
         'export' => 'Mengekspor',
         'import' => 'Mengimpor',
+        'publish' => 'Mempublikasikan',
+        'unpublish' => 'Batal Publikasi',
+        'archive' => 'Mengarsipkan',
+        'restore' => 'Memulihkan',
+        'send' => 'Mengirim',
+        'scan' => 'Memindai',
+        'checkin' => 'Check-in',
+        'toggle' => 'Mengubah Status',
+        'backup' => 'Backup',
+        'settings' => 'Pengaturan',
     ];
 
     // Relationships

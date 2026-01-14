@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class UserController extends Controller
 {
+    use LogsActivity;
+
     public function index(Request $request)
     {
         $query = User::withCount('bookings');
@@ -41,7 +44,6 @@ class UserController extends Controller
             'created_at' => $u->created_at,
         ]);
 
-        // Stats for the page
         $stats = [
             'total' => User::count(),
             'active' => User::where('status', 'active')->count(),
@@ -113,10 +115,10 @@ class UserController extends Controller
                 'string',
                 'min:8',
                 'confirmed',
-                'regex:/[A-Z]/',      // Must contain uppercase
-                'regex:/[a-z]/',      // Must contain lowercase  
-                'regex:/[0-9]/',      // Must contain number
-                'regex:/[@#?!$%^&*_\-+=]/', // Must contain special character
+                'regex:/[A-Z]/',
+                'regex:/[a-z]/',
+                'regex:/[0-9]/',
+                'regex:/[@#?!$%^&*_\-+=]/',
             ],
             'status' => 'required|in:active,blocked',
         ], [
@@ -130,7 +132,9 @@ class UserController extends Controller
 
         $validated['password'] = bcrypt($validated['password']);
 
-        User::create($validated);
+        $user = User::create($validated);
+
+        $this->logCreate($user, 'Pengguna', $user->name);
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User berhasil ditambahkan.');
@@ -161,10 +165,10 @@ class UserController extends Controller
             'string',
             'min:8',
             'confirmed',
-            'regex:/[A-Z]/',      // Must contain uppercase
-            'regex:/[a-z]/',      // Must contain lowercase  
-            'regex:/[0-9]/',      // Must contain number
-            'regex:/[@#?!$%^&*_\-+=]/', // Must contain special character
+            'regex:/[A-Z]/',
+            'regex:/[a-z]/',
+            'regex:/[0-9]/',
+            'regex:/[@#?!$%^&*_\-+=]/',
         ] : 'nullable|string|min:8|confirmed';
 
         $validated = $request->validate([
@@ -183,6 +187,8 @@ class UserController extends Controller
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
         ]);
 
+        $oldValues = $user->only(['name', 'email', 'status']);
+
         if ($request->filled('password')) {
             $validated['password'] = bcrypt($validated['password']);
         } else {
@@ -190,6 +196,9 @@ class UserController extends Controller
         }
 
         $user->update($validated);
+
+        $newValues = $user->only(['name', 'email', 'status']);
+        $this->logUpdate($user, 'Pengguna', $oldValues, $newValues, $user->name);
 
         return redirect()->route('admin.users.index')
             ->with('success', 'Data user berhasil diperbarui.');
@@ -201,7 +210,11 @@ class UserController extends Controller
             'status' => 'required|in:active,blocked',
         ]);
 
+        $oldStatus = $user->status;
         $user->update(['status' => $validated['status']]);
+
+        $action = $validated['status'] === 'active' ? 'Mengaktifkan' : 'Memblokir';
+        $this->logActivity('toggle', "{$action} pengguna: {$user->name}", $user, ['status' => $oldStatus], ['status' => $validated['status']]);
 
         $message = $validated['status'] === 'active'
             ? 'User berhasil diaktifkan.'
@@ -214,6 +227,8 @@ class UserController extends Controller
     {
         $user->update(['status' => User::STATUS_BLOCKED]);
 
+        $this->logActivity('toggle', "Memblokir pengguna: {$user->name}", $user, ['status' => 'active'], ['status' => 'blocked']);
+
         return back()->with('success', 'User berhasil diblokir.');
     }
 
@@ -221,12 +236,16 @@ class UserController extends Controller
     {
         $user->update(['status' => User::STATUS_ACTIVE]);
 
+        $this->logActivity('toggle', "Mengaktifkan pengguna: {$user->name}", $user, ['status' => 'blocked'], ['status' => 'active']);
+
         return back()->with('success', 'User berhasil diaktifkan.');
     }
 
     public function destroy(User $user)
     {
-        // Soft delete
+        $name = $user->name;
+        $this->logDelete($user, 'Pengguna', $name);
+
         $user->delete();
 
         return redirect()->route('admin.users.index')

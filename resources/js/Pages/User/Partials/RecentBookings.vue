@@ -78,12 +78,12 @@ onMounted(() => {
 
                 <!-- Status & Price -->
                 <div class="text-right flex-shrink-0">
-                    <span v-if="booking.status === 'paid'" 
+                    <span v-if="['confirmed', 'paid'].includes(booking.status)" 
                           class="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[9px] sm:text-[10px] font-semibold shadow-sm">
                         <CheckCircle class="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                        Lunas
+                        Terkonfirmasi
                     </span>
-                    <span v-else-if="booking.status === 'pending'"
+                    <span v-else-if="['pending', 'awaiting_cash'].includes(booking.status)"
                           class="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-semibold shadow-sm">
                         <Clock class="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                         Menunggu

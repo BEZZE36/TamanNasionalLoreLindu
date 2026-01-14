@@ -9,6 +9,7 @@ import GallerySection from './Home/GallerySection.vue';
 import WhyTnllSection from './Home/WhyTnllSection.vue';
 import BlogSection from './Home/BlogSection.vue';
 import NewsSection from './Home/NewsSection.vue';
+import TestimonialSection from './Home/TestimonialSection.vue';
 import FAQSection from './Home/FAQSection.vue';
 
 defineProps({
@@ -17,6 +18,9 @@ defineProps({
     faqItems: Array,
     articles: Array,
     news: Array,
+    testimonials: Array,
+    avgRating: [Number, String],
+    totalReviews: Number,
     stats: Object,
 });
 </script>
@@ -44,7 +48,11 @@ defineProps({
         <!-- News Section -->
         <NewsSection :news="news" />
 
+        <!-- Testimonial Section -->
+        <TestimonialSection :testimonials="testimonials" :avgRating="avgRating" :totalReviews="totalReviews" />
+
         <!-- FAQ Section -->
         <FAQSection :faqItems="faqItems" />
     </PublicLayout>
 </template>
+

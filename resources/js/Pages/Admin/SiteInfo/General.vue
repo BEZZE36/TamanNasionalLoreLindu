@@ -67,9 +67,11 @@ const deleteSetting = (id) => {
     });
 };
 
+const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
 const handleFileChange = (key, event) => {
     const file = event.target.files[0];
     if (file) {
+        if (!allowedImageTypes.includes(file.type)) { alert('Format tidak didukung! Hanya JPG, PNG, dan WebP yang diizinkan.'); event.target.value = ''; return; }
         formData.value[key] = file;
     }
 };
@@ -161,7 +163,7 @@ const handleFileChange = (key, event) => {
                                             <div v-if="setting.value" class="relative group/image w-fit">
                                                 <img :src="`/storage/${setting.value}`" class="w-32 h-20 object-cover rounded-xl shadow-md ring-2 ring-gray-100 group-hover/image:ring-teal-300 transition-all duration-300">
                                             </div>
-                                            <input type="file" @change="handleFileChange(setting.key, $event)" accept="image/*"
+                                            <input type="file" @change="handleFileChange(setting.key, $event)" accept=".jpg,.jpeg,.png,.webp"
                                                 class="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 file:cursor-pointer file:transition-colors">
                                         </div>
                                         

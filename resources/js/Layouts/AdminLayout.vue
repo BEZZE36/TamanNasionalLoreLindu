@@ -12,11 +12,18 @@ import SidebarNavPengaturan from '@/Components/Admin/SidebarNavPengaturan.vue';
 import AdminHeaderControls from '@/Components/Admin/AdminHeaderControls.vue';
 import PageLoadingOverlay from '@/Components/Skeleton/PageLoadingOverlay.vue';
 import GlobalSearchModal from '@/Components/Admin/GlobalSearchModal.vue';
+import AIToast from '@/Components/Admin/AIToast.vue';
+
+// Import auto-logout composable
+import { useIdleTimeout } from '@/composables/useIdleTimeout';
 
 const props = defineProps({
     admin: Object,
     notifications: Array,
 });
+
+// Initialize auto-logout (admin always authenticated, isAdmin = true for correct redirect)
+useIdleTimeout(true, true);
 
 const page = usePage();
 
@@ -78,11 +85,44 @@ onMounted(() => {
     setTimeout(animateSidebar, 100);
     updateTime();
     setInterval(updateTime, 60000);
+    
+    // Start checking admin status every 10 seconds for realtime blocking
+    checkAdminStatus();
+    statusCheckInterval = setInterval(checkAdminStatus, 10000);
 });
+
+// Check if admin is still active (realtime blocking)
+let statusCheckInterval = null;
+const checkAdminStatus = async () => {
+    try {
+        const response = await fetch('/admin/api/check-status', {
+            method: 'GET',
+            headers: { 
+                'Accept': 'application/json', 
+                'X-Requested-With': 'XMLHttpRequest' 
+            },
+            credentials: 'same-origin',
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (!data.is_active) {
+                // Admin has been deactivated, redirect to blocked page
+                window.location.href = '/admin/account-blocked';
+            }
+        }
+    } catch (e) {
+        // Silently fail - don't disrupt normal usage
+        console.warn('Failed to check admin status:', e);
+    }
+};
 
 onUnmounted(() => {
     window.removeEventListener('resize', checkMobile);
     window.removeEventListener('keydown', handleKeydown);
+    if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+    }
 });
 
 const toggleSidebar = () => {
@@ -122,6 +162,9 @@ const mainMargin = computed(() => {
     <div class="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
         <!-- Page Loading Overlay -->
         <PageLoadingOverlay />
+        
+        <!-- AI Rate Limit Toast -->
+        <AIToast />
         
         <!-- Global Search Modal -->
         <GlobalSearchModal :show="showGlobalSearch" @close="closeGlobalSearch" />
@@ -260,7 +303,7 @@ const mainMargin = computed(() => {
             <!-- Main Content Area -->
             <main 
                 :class="[
-                    'flex-1 transition-all duration-300 min-h-screen',
+                    'flex-1 transition-all duration-300 min-h-screen overflow-x-hidden',
                     mainMargin
                 ]"
             >
@@ -290,7 +333,7 @@ const mainMargin = computed(() => {
                 </header>
 
                 <!-- Page Content -->
-                <div class="p-3 sm:p-4 lg:p-6">
+                <div class="p-3 sm:p-4 lg:p-6 overflow-x-hidden max-w-full">
                     <slot />
                 </div>
             </main>

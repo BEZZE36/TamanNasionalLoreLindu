@@ -222,7 +222,7 @@ class DestinationService
         $newDestination = $destination->replicate();
         $newDestination->name = $destination->name . ' (Salinan)';
         $newDestination->slug = $this->generateUniqueSlug($newDestination->name);
-        $newDestination->is_active = false;
+        $newDestination->is_active = true;
         $newDestination->created_at = now();
         $newDestination->updated_at = now();
         $newDestination->save();

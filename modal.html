@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Full-Screen Modal Announcement</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3b82f6",
+                        "primary-dark": "#2563eb",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#050505",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "3xl": "1.5rem", "full": "9999px"},
+                    animation: {
+                        'modal-enter': 'modalEnter 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'float': 'float 6s ease-in-out infinite',
+                        'shine': 'shine 3s linear infinite',
+                        'pulse-slow': 'pulse 5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        modalEnter: {
+                            '0%': { opacity: '0', transform: 'translateY(30px) scale(0.95)', filter: 'blur(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0) scale(1)', filter: 'blur(0)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-12px)' },
+                        },
+                        shine: {
+                            '0%': { transform: 'translateX(-100%)' },
+                            '100%': { transform: 'translateX(100%)' }
+                        }
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .custom-checkbox:checked {
+            background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuBS9-MjwVLODhapxIT_IrTBdZQhCDXFsOgMH5Ymwpil0Pfr6Zihhx5YNWh5Ohl9uM-1GoJfjB0Ls0HQBfypRNVQOZrVAJOcD6llcsGZ4yLyCxLP-pFEhOGRpBkstL6pbL0X2kT4DbvxrHG-gLbN8y2qg3n_x0xO5zmPVRJCZ8bkNCajdFrEVVz6jfJOcl5reIOF3xonxWLRtoKhBU7dwDxOD2K2tIo0IlGxfahac0S2yLFL2-el1wDZCFsh02Avj6KwdJVmw5bDRPM);
+        }.glass-panel {
+            background: rgba(20, 20, 25, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-left: 1px solid rgba(255, 255, 255, 0.08);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 40px 80px -12px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased min-h-screen relative overflow-hidden text-slate-200">
+<div class="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+<div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse-slow"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full blur-[120px] animate-pulse-slow" style="animation-delay: 2s;"></div>
+<div class="absolute inset-0 p-8 grid grid-cols-12 gap-6 opacity-20 select-none blur-[1px]">
+<div class="col-span-2 bg-[#1c1d27] rounded-xl h-full border border-white/5"></div>
+<div class="col-span-10 flex flex-col gap-6">
+<div class="h-16 bg-[#1c1d27] rounded-xl w-full border border-white/5"></div>
+<div class="grid grid-cols-3 gap-6 h-full">
+<div class="bg-[#1c1d27] rounded-xl h-64 border border-white/5"></div>
+<div class="bg-[#1c1d27] rounded-xl h-64 border border-white/5"></div>
+<div class="bg-[#1c1d27] rounded-xl h-64 border border-white/5"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[#050505]/80 backdrop-blur-sm transition-all duration-700 ease-out">
+<div class="group relative w-full max-w-[500px] flex flex-col glass-panel rounded-3xl overflow-hidden animate-modal-enter transition-all duration-500 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.15),0_50px_100px_-10px_rgba(0,0,0,0.9)]">
+<div class="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rotate-45"></div>
+<button class="absolute top-5 right-5 z-30 p-2.5 text-slate-400 hover:text-white bg-black/40 hover:bg-white/10 rounded-full transition-all duration-300 hover:rotate-90 border border-white/5 hover:border-white/20 backdrop-blur-md group/close">
+<span class="material-symbols-outlined text-[20px] transition-transform group-active/close:scale-90">close</span>
+</button>
+<div class="relative w-full h-64 overflow-hidden group/image">
+<div class="absolute inset-0 bg-center bg-cover bg-no-repeat transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover/image:scale-110 group-hover:rotate-1" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC9XkZXtpvZ0PhacSrlE4rSJ3JfqQYdLzscElyIgePIk18hR9sGScIcc9RE9ApcigLhaQjArbRZUHiDbkwnsTcnsFUln6OL_wh3hD_gzYSfOCgeVbITfv-jwGi70wcgzqdQAJv8TNg5F-zqTy9Dxx1uRPTo8FD1DBoOjKER8JDCYTorInJLBTN7j-C4o4LRWIA2LAIK316zpI3Wq79T9rL8tkMhpmmQ-lr_j551F28kiasq2_71P5ZEDBYYAOmGiNl9WVuHuy7jMHE");'>
+</div>
+<div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#15161e]/20 to-[#14151a]"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-[#14151a] via-transparent to-transparent opacity-90"></div>
+</div>
+<div class="relative z-10 flex flex-col px-10 pb-10 pt-0 text-center items-center -mt-16">
+<div class="mb-6 p-2 rounded-full bg-[#15161e]/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] animate-float">
+<div class="relative flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-primary/30 to-[#15161e] border border-white/5 shadow-inner overflow-hidden group/icon">
+<div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent translate-x-[-150%] animate-[shine_4s_infinite]"></div>
+<span class="material-symbols-outlined text-[32px] text-blue-400 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)] group-hover/icon:scale-110 transition-transform duration-300">rocket_launch</span>
+</div>
+</div>
+<h2 class="text-white text-[2rem] font-bold leading-tight tracking-tight mb-4 drop-shadow-md bg-clip-text text-transparent bg-gradient-to-b from-white to-white/70">
+                    New Dashboard is Live
+                </h2>
+<p class="text-slate-400 text-[15px] font-medium leading-relaxed mb-8 max-w-[340px] mx-auto tracking-wide">
+                    We've completely overhauled your analytics view. Customize widgets, export real-time data, and toggle dark mode instantly.
+                </p>
+<div class="flex flex-col w-full gap-4 mb-8">
+<button class="group/btn relative flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 px-6 bg-gradient-to-r from-primary to-blue-600 hover:to-blue-500 transition-all duration-300 text-white text-[15px] font-semibold tracking-wide shadow-[0_1px_2px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.6)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]">
+<span class="relative z-10 flex items-center gap-2">
+                            Explore New Features
+                            <span class="material-symbols-outlined text-[18px] group-hover/btn:translate-x-1 transition-transform duration-300">arrow_forward</span>
+</span>
+<div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-700 ease-in-out"></div>
+</button>
+<button class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 px-6 bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 transition-all duration-300 text-slate-400 hover:text-white text-[14px] font-medium tracking-wide hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] backdrop-blur-sm">
+<span class="truncate">Maybe later</span>
+</button>
+</div>
+<div class="w-full border-t border-white/5 pt-6 flex justify-center">
+<label class="flex gap-x-3 items-center cursor-pointer group/chk select-none opacity-70 hover:opacity-100 transition-opacity">
+<div class="relative flex items-center justify-center">
+<input class="custom-checkbox h-4 w-4 rounded border-slate-600 bg-white/5 checked:bg-primary checked:border-primary focus:ring-0 focus:ring-offset-0 focus:border-primary transition-all duration-200 cursor-pointer" type="checkbox"/>
+</div>
+<p class="text-slate-400 group-hover/chk:text-slate-200 transition-colors text-xs font-medium tracking-wide">Don't show this again</p>
+</label>
+</div>
+</div>
+</div>
+</div>
+
+</body></html>

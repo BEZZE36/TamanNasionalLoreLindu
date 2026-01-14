@@ -10,7 +10,13 @@ import {
 } from 'lucide-vue-next';
 
 defineOptions({ layout: AdminLayout });
-const props = defineProps({ admin: { type: Object, required: true } });
+const props = defineProps({ 
+    editAdmin: { type: Object, required: true },
+    availableRoles: { type: Array, default: () => [] }
+});
+
+// Shortcut for template usage
+const editAdmin = computed(() => props.editAdmin);
 
 const pageRef = ref(null);
 const showPassword = ref(false);
@@ -23,13 +29,14 @@ const emailAvailable = ref(null);
 const usernameAvailable = ref(null);
 
 const form = useForm({
-    name: props.admin.name || '',
-    email: props.admin.email || '',
-    username: props.admin.username || '',
+    name: props.editAdmin.name || '',
+    email: props.editAdmin.email || '',
+    username: props.editAdmin.username || '',
     password: '',
     password_confirmation: '',
-    role: props.admin.role || 'admin',
-    is_active: props.admin.is_active ?? true
+    role: props.editAdmin.role || 'admin',
+    is_active: props.editAdmin.is_active ?? true,
+    role_ids: props.editAdmin.role_ids || []
 });
 
 const getInitials = (name) => {
@@ -43,8 +50,8 @@ let emailTimeout;
 watch(() => form.email, (val) => {
     clearTimeout(emailTimeout);
     emailAvailable.value = null;
-    if (!val || !val.includes('@') || val === props.admin.email) {
-        emailAvailable.value = val === props.admin.email ? true : null;
+    if (!val || !val.includes('@') || val === props.editAdmin.email) {
+        emailAvailable.value = val === props.editAdmin.email ? true : null;
         return;
     }
     emailTimeout = setTimeout(async () => {
@@ -52,7 +59,7 @@ watch(() => form.email, (val) => {
         try {
             const { data } = await axios.post('/admin/api/check-admin-email', { 
                 email: val, 
-                exclude_id: props.admin.id 
+                exclude_id: props.editAdmin.id 
             });
             emailAvailable.value = data.available;
         } catch (e) {
@@ -68,8 +75,8 @@ let usernameTimeout;
 watch(() => form.username, (val) => {
     clearTimeout(usernameTimeout);
     usernameAvailable.value = null;
-    if (!val || val.length < 3 || val === props.admin.username) {
-        usernameAvailable.value = val === props.admin.username ? true : null;
+    if (!val || val.length < 3 || val === props.editAdmin.username) {
+        usernameAvailable.value = val === props.editAdmin.username ? true : null;
         return;
     }
     usernameTimeout = setTimeout(async () => {
@@ -77,7 +84,7 @@ watch(() => form.username, (val) => {
         try {
             const { data } = await axios.post('/admin/api/check-admin-username', { 
                 username: val, 
-                exclude_id: props.admin.id 
+                exclude_id: props.editAdmin.id 
             });
             usernameAvailable.value = data.available;
         } catch (e) {
@@ -111,7 +118,7 @@ const canSubmit = computed(() => {
 });
 
 const submit = () => {
-    form.put(`/admin/admins/${props.admin.id}`, {
+    form.put(`/admin/admins/${props.editAdmin.id}`, {
         onSuccess: () => router.visit('/admin/admins')
     });
 };
@@ -144,21 +151,21 @@ onBeforeUnmount(() => { if (ctx) ctx.revert(); });
                 </Link>
                 <div class="flex items-center gap-3 flex-1">
                     <div class="relative">
-                        <div :class="['w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-lg', admin.role === 'super_admin' ? 'bg-gradient-to-br from-amber-400 to-yellow-500' : 'bg-white/20 backdrop-blur-sm']">
-                            {{ getInitials(admin.name) }}
+                        <div :class="['w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-lg', editAdmin.role === 'super_admin' ? 'bg-gradient-to-br from-amber-400 to-yellow-500' : 'bg-white/20 backdrop-blur-sm']">
+                            {{ getInitials(editAdmin.name) }}
                         </div>
-                        <div v-if="admin.role === 'super_admin'" class="absolute -bottom-1 -right-1 w-5 h-5 rounded bg-amber-400 shadow flex items-center justify-center">
+                        <div v-if="editAdmin.role === 'super_admin'" class="absolute -bottom-1 -right-1 w-5 h-5 rounded bg-amber-400 shadow flex items-center justify-center">
                             <Crown class="w-3 h-3 text-white" />
                         </div>
                     </div>
                     <div>
                         <div class="flex items-center gap-2 mb-0.5">
                             <h1 class="text-lg font-bold text-white">Edit Admin</h1>
-                            <span :class="['px-2 py-0.5 rounded-full text-[9px] font-bold', admin.is_active ? 'bg-emerald-500/20 text-white' : 'bg-red-500/20 text-white']">
-                                {{ admin.is_active ? '✓ Aktif' : '✕ Non-Aktif' }}
+                            <span :class="['px-2 py-0.5 rounded-full text-[9px] font-bold', editAdmin.is_active ? 'bg-emerald-500/20 text-white' : 'bg-red-500/20 text-white']">
+                                {{ editAdmin.is_active ? '✓ Aktif' : '✕ Non-Aktif' }}
                             </span>
                         </div>
-                        <p class="text-indigo-100/80 text-[11px]">@{{ admin.username }} · {{ admin.email }}</p>
+                        <p class="text-indigo-100/80 text-[11px]">@{{ editAdmin.username }} · {{ editAdmin.email }}</p>
                     </div>
                 </div>
             </div>
@@ -314,29 +321,54 @@ onBeforeUnmount(() => { if (ctx) ctx.revert(); });
                     </div>
                 </div>
                 <div class="p-5 space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
-                        <label :class="['relative p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3', form.role === 'admin' ? 'border-blue-500 bg-blue-50/50 shadow-lg shadow-blue-500/10' : 'border-gray-200 hover:border-gray-300']">
-                            <input type="radio" v-model="form.role" value="admin" class="sr-only">
-                            <div :class="['w-10 h-10 rounded-lg flex items-center justify-center transition-all', form.role === 'admin' ? 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg' : 'bg-gray-200']">
-                                <Shield :class="['w-5 h-5', form.role === 'admin' ? 'text-white' : 'text-gray-400']" />
-                            </div>
-                            <div>
-                                <p :class="['text-xs font-bold', form.role === 'admin' ? 'text-blue-700' : 'text-gray-700']">Admin</p>
-                                <p class="text-[9px] text-gray-500">Akses terbatas</p>
-                            </div>
-                        </label>
-                        <label :class="['relative p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3', form.role === 'super_admin' ? 'border-amber-500 bg-amber-50/50 shadow-lg shadow-amber-500/10' : 'border-gray-200 hover:border-gray-300']">
-                            <input type="radio" v-model="form.role" value="super_admin" class="sr-only">
-                            <div :class="['w-10 h-10 rounded-lg flex items-center justify-center transition-all', form.role === 'super_admin' ? 'bg-gradient-to-br from-amber-500 to-yellow-600 shadow-lg' : 'bg-gray-200']">
-                                <Crown :class="['w-5 h-5', form.role === 'super_admin' ? 'text-white' : 'text-gray-400']" />
-                            </div>
-                            <div>
-                                <p :class="['text-xs font-bold', form.role === 'super_admin' ? 'text-amber-700' : 'text-gray-700']">Super Admin</p>
-                                <p class="text-[9px] text-gray-500">Akses penuh</p>
-                            </div>
-                        </label>
+                    <!-- Admin Type -->
+                    <div>
+                        <p class="text-[10px] font-bold text-gray-600 mb-2">Tipe Admin</p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label :class="['relative p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3', form.role === 'admin' ? 'border-blue-500 bg-blue-50/50 shadow-lg shadow-blue-500/10' : 'border-gray-200 hover:border-gray-300']">
+                                <input type="radio" v-model="form.role" value="admin" class="sr-only">
+                                <div :class="['w-10 h-10 rounded-lg flex items-center justify-center transition-all', form.role === 'admin' ? 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg' : 'bg-gray-200']">
+                                    <Shield :class="['w-5 h-5', form.role === 'admin' ? 'text-white' : 'text-gray-400']" />
+                                </div>
+                                <div>
+                                    <p :class="['text-xs font-bold', form.role === 'admin' ? 'text-blue-700' : 'text-gray-700']">Admin</p>
+                                    <p class="text-[9px] text-gray-500">Akses berdasarkan role</p>
+                                </div>
+                            </label>
+                            <label :class="['relative p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3', form.role === 'super_admin' ? 'border-amber-500 bg-amber-50/50 shadow-lg shadow-amber-500/10' : 'border-gray-200 hover:border-gray-300']">
+                                <input type="radio" v-model="form.role" value="super_admin" class="sr-only">
+                                <div :class="['w-10 h-10 rounded-lg flex items-center justify-center transition-all', form.role === 'super_admin' ? 'bg-gradient-to-br from-amber-500 to-yellow-600 shadow-lg' : 'bg-gray-200']">
+                                    <Crown :class="['w-5 h-5', form.role === 'super_admin' ? 'text-white' : 'text-gray-400']" />
+                                </div>
+                                <div>
+                                    <p :class="['text-xs font-bold', form.role === 'super_admin' ? 'text-amber-700' : 'text-gray-700']">Super Admin</p>
+                                    <p class="text-[9px] text-gray-500">Akses penuh</p>
+                                </div>
+                            </label>
+                        </div>
                     </div>
                     
+                    <!-- Assigned Roles -->
+                    <div v-if="availableRoles.length > 0">
+                        <p class="text-[10px] font-bold text-gray-600 mb-2">Role & Hak Akses</p>
+                        <p class="text-[9px] text-gray-500 mb-3">Pilih satu atau lebih role untuk menentukan hak akses admin</p>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            <label v-for="role in availableRoles" :key="role.id"
+                                :class="['relative p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-2',
+                                    form.role_ids.includes(role.id) ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-200 hover:border-gray-300']">
+                                <input type="checkbox" :value="role.id" v-model="form.role_ids" class="sr-only">
+                                <div :class="['w-5 h-5 rounded flex items-center justify-center transition-all text-xs font-bold',
+                                    form.role_ids.includes(role.id) ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-400']">
+                                    <span v-if="form.role_ids.includes(role.id)">✓</span>
+                                </div>
+                                <span :class="['text-xs font-medium', form.role_ids.includes(role.id) ? 'text-indigo-700' : 'text-gray-600']">
+                                    {{ role.name }}
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Active Status -->
                     <label :class="['relative p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3', form.is_active ? 'border-emerald-500 bg-emerald-50/50' : 'border-gray-200 hover:border-gray-300']">
                         <input type="checkbox" v-model="form.is_active" class="sr-only">
                         <div :class="['w-10 h-10 rounded-lg flex items-center justify-center transition-all', form.is_active ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg' : 'bg-gray-200']">

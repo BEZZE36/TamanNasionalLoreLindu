@@ -7,16 +7,78 @@ use App\Models\Gallery;
 use App\Models\GalleryMedia;
 use App\Models\Destination;
 use App\Services\Admin\GalleryService;
+use App\Services\NotificationService;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class GalleryController extends Controller
 {
     protected GalleryService $galleryService;
+    protected NotificationService $notificationService;
+    protected PushNotificationService $pushNotificationService;
 
-    public function __construct(GalleryService $galleryService)
-    {
+    public function __construct(
+        GalleryService $galleryService,
+        NotificationService $notificationService,
+        PushNotificationService $pushNotificationService
+    ) {
         $this->galleryService = $galleryService;
+        $this->notificationService = $notificationService;
+        $this->pushNotificationService = $pushNotificationService;
+    }
+
+    public function dashboard(Request $request)
+    {
+        $period = $request->get('period', 30);
+        $startDate = now()->subDays($period);
+
+        $stats = [
+            'total' => Gallery::count(),
+            'published' => Gallery::where('is_active', true)->count(),
+            'draft' => Gallery::where('is_active', false)->count(),
+            'featured' => Gallery::where('is_featured', true)->count(),
+            'total_views' => Gallery::sum('view_count'),
+            'total_likes' => \DB::table('gallery_likes')->count(),
+            'total_images' => GalleryMedia::count(),
+        ];
+
+        // Generate viewsChart data based on created_at dates
+        $viewsChart = collect(range(0, $period - 1))->map(function ($i) use ($startDate) {
+            $date = $startDate->copy()->addDays($i);
+            return [
+                'date' => $date->format('d M'),
+                'views' => Gallery::whereDate('created_at', $date)->sum('view_count'),
+            ];
+        })->values()->toArray();
+
+        $topAlbums = Gallery::orderBy('view_count', 'desc')
+            ->take(10)
+            ->get()
+            ->map(fn($g) => [
+                'id' => $g->id,
+                'title' => $g->title,
+                'views_count' => $g->view_count ?? 0,
+            ]);
+
+        $recentAlbums = Gallery::with('media')
+            ->latest()
+            ->take(8)
+            ->get()
+            ->map(fn($g) => [
+                'id' => $g->id,
+                'title' => $g->title,
+                'cover_url' => $g->cover_url,
+                'images_count' => $g->media->count(),
+            ]);
+
+        return Inertia::render('Admin/Gallery/Dashboard', [
+            'stats' => $stats,
+            'viewsChart' => $viewsChart,
+            'topAlbums' => $topAlbums,
+            'recentAlbums' => $recentAlbums,
+            'period' => $period,
+        ]);
     }
 
     public function index(Request $request)
@@ -75,6 +137,7 @@ class GalleryController extends Controller
             'location' => 'nullable|string|max:100',
             'description' => 'nullable|string',
             'cover_image' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'images' => 'nullable|array',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'video_urls' => 'nullable|array',
             'video_urls.*' => 'nullable|url',
@@ -88,7 +151,22 @@ class GalleryController extends Controller
             'meta_keywords' => 'nullable|string|max:255',
         ]);
 
-        $this->galleryService->createGallery($validated, $request);
+        $gallery = $this->galleryService->createGallery($validated, $request);
+
+        // Send notifications if active
+        if ($gallery->is_active) {
+            $url = route('gallery.show', $gallery->slug);
+            $this->notificationService->notifyNewGallery(
+                $gallery->title,
+                $gallery->description ?? '',
+                $url
+            );
+            $this->pushNotificationService->notifyNewGallery(
+                $gallery->title,
+                $gallery->description ?? '',
+                $url
+            );
+        }
 
         return redirect()->route('admin.gallery.index')
             ->with('success', 'Album galeri berhasil ditambahkan.');
@@ -139,6 +217,7 @@ class GalleryController extends Controller
             'location' => 'nullable|string|max:100',
             'description' => 'nullable|string',
             'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'images' => 'nullable|array',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'video_urls' => 'nullable|array',
             'video_urls.*' => 'nullable|url',

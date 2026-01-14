@@ -1,18 +1,23 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { router, usePage } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
 import FAQHeader from './Partials/FAQHeader.vue';
 import FAQFilters from './Partials/FAQFilters.vue';
 import FAQItem from './Partials/FAQItem.vue';
 import FAQEmpty from './Partials/FAQEmpty.vue';
-import { Save, CheckCircle, X } from 'lucide-vue-next';
+import { gsap } from 'gsap';
+import { Save, CheckCircle, X, Loader2 } from 'lucide-vue-next';
+
+defineOptions({ layout: AdminLayout });
 
 const props = defineProps({
     faqItems: { type: Array, default: () => [] },
-    flash: { type: Object, default: () => ({}) }
 });
+
+const page = usePage();
+const flash = computed(() => page.props.flash || {});
 
 // State
 const activeCategory = ref('all');
@@ -21,6 +26,8 @@ const searchQuery = ref('');
 const showSuccess = ref(false);
 const showDeleteModal = ref(false);
 const itemToDelete = ref(null);
+const isSaving = ref(false);
+let ctx;
 
 // Categories
 const categories = [
@@ -42,11 +49,21 @@ onMounted(() => {
         isNew: false
     }));
 
-    if (props.flash?.success) {
+    if (flash.value?.success) {
         showSuccess.value = true;
         setTimeout(() => showSuccess.value = false, 5000);
     }
+
+    // GSAP animations
+    ctx = gsap.context(() => {
+        gsap.fromTo('.faq-item', 
+            { opacity: 0, y: 20, scale: 0.98 }, 
+            { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: 0.08, delay: 0.2, ease: 'power2.out' }
+        );
+    });
 });
+
+onBeforeUnmount(() => { if (ctx) ctx.revert(); });
 
 // Computed
 const filteredItems = computed(() => {
@@ -90,6 +107,19 @@ const executeDelete = () => {
         items.value = items.value.filter(i => i.id !== itemToDelete.value.id);
         itemToDelete.value = null;
         showDeleteModal.value = false;
+        
+        // Auto-save after delete
+        router.put('/admin/site-info/faq', {
+            questions: items.value.map(i => i.question),
+            answers: items.value.map(i => i.answer),
+            categories: items.value.map(i => i.category)
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                showSuccess.value = true;
+                setTimeout(() => showSuccess.value = false, 3000);
+            }
+        });
     }
 };
 
@@ -100,6 +130,7 @@ const submitForm = () => {
         return;
     }
 
+    isSaving.value = true;
     router.put('/admin/site-info/faq', {
         questions: items.value.map(i => i.question),
         answers: items.value.map(i => i.answer),
@@ -110,6 +141,9 @@ const submitForm = () => {
             items.value = items.value.map(item => ({ ...item, isNew: false }));
             showSuccess.value = true;
             setTimeout(() => showSuccess.value = false, 5000);
+        },
+        onFinish: () => {
+            isSaving.value = false;
         }
     });
 };
@@ -119,60 +153,59 @@ const getCategoryCount = (name) => name === 'all' ? items.value.length : items.v
 </script>
 
 <template>
-    <AdminLayout>
-        <div class="min-h-screen space-y-8">
-            <!-- Header -->
-            <FAQHeader :count="items.length" :categories-count="categories.length" @add="addItem" />
+    <div class="min-h-screen space-y-5 overflow-x-hidden">
+        <!-- Header -->
+        <FAQHeader :count="items.length" :categories-count="categories.length" @add="addItem" />
 
-            <!-- Success Alert -->
-            <Transition enter-active-class="transition duration-300" enter-from-class="opacity-0 -translate-y-4" leave-active-class="transition duration-200" leave-from-class="opacity-100" leave-to-class="opacity-0">
-                <div v-if="showSuccess" class="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/60 px-6 py-5 shadow-lg">
-                    <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg">
-                        <CheckCircle class="h-6 w-6 text-white" />
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-bold text-emerald-800">Berhasil!</p>
-                        <p class="text-emerald-600 text-sm">FAQ berhasil diperbarui!</p>
-                    </div>
-                    <button @click="showSuccess = false" class="p-2 rounded-lg hover:bg-emerald-100"><X class="w-5 h-5 text-emerald-600" /></button>
+        <!-- Flash Message -->
+        <Transition name="slide">
+            <div v-if="showSuccess" class="flex items-center gap-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/60 px-5 py-3.5 shadow-lg">
+                <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg animate-bounce">
+                    <CheckCircle class="h-4 w-4 text-white" />
                 </div>
-            </Transition>
+                <div class="flex-1">
+                    <p class="text-xs font-semibold text-emerald-800">FAQ berhasil diperbarui!</p>
+                </div>
+                <button @click="showSuccess = false" class="p-1.5 rounded-lg hover:bg-emerald-100 transition-colors"><X class="w-4 h-4 text-emerald-600" /></button>
+            </div>
+        </Transition>
 
-            <!-- Filters -->
-            <FAQFilters 
-                v-model:search="searchQuery" 
-                v-model:category="activeCategory"
-                :categories="categories"
-                :get-count="getCategoryCount"
-            />
+        <!-- Filters -->
+        <FAQFilters 
+            v-model:search="searchQuery" 
+            v-model:category="activeCategory"
+            :categories="categories"
+            :get-count="getCategoryCount"
+        />
 
-            <!-- FAQ Items -->
-            <div class="space-y-4" id="faq-items-container">
-                <TransitionGroup tag="div" class="space-y-4"
-                    enter-active-class="transition-all duration-500" enter-from-class="opacity-0 -translate-y-8 scale-95"
-                    leave-active-class="transition-all duration-300" leave-to-class="opacity-0 translate-y-4"
-                >
+        <!-- FAQ Items -->
+        <div class="space-y-3">
+            <TransitionGroup tag="div" class="space-y-3"
+                enter-active-class="transition-all duration-500" enter-from-class="opacity-0 -translate-y-8 scale-95"
+                leave-active-class="transition-all duration-300" leave-to-class="opacity-0 translate-y-4"
+            >
+                <div v-for="item in filteredItems" :key="item.id" class="faq-item">
                     <FAQItem 
-                        v-for="item in filteredItems" 
-                        :key="item.id"
                         :item="item"
                         :categories="categories"
                         :item-number="items.indexOf(item) + 1"
                         :get-category-config="getCategoryConfig"
                         @delete="confirmDelete"
                     />
-                </TransitionGroup>
+                </div>
+            </TransitionGroup>
 
-                <FAQEmpty v-if="filteredItems.length === 0" :search="searchQuery" :category="activeCategory" @add="addItem" />
-            </div>
+            <FAQEmpty v-if="filteredItems.length === 0" :search="searchQuery" :category="activeCategory" @add="addItem" />
+        </div>
 
-            <!-- Save Button -->
-            <div v-if="items.length > 0" class="sticky bottom-6 flex justify-end z-20">
-                <button @click="submitForm" class="group inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-violet-500 via-purple-500 to-violet-600 px-10 py-5 text-white font-bold text-lg shadow-2xl shadow-violet-500/40 hover:shadow-violet-500/60 hover:-translate-y-1 hover:scale-105 transition-all duration-500">
-                    <Save class="w-6 h-6 group-hover:rotate-12 transition-transform" />
-                    Simpan Perubahan
-                </button>
-            </div>
+        <!-- Save Button -->
+        <div v-if="items.length > 0" class="sticky bottom-4 flex justify-end z-20">
+            <button @click="submitForm" :disabled="isSaving"
+                class="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 px-6 py-3 text-white text-xs font-bold shadow-2xl shadow-purple-500/40 hover:shadow-purple-500/60 hover:-translate-y-0.5 hover:scale-105 transition-all duration-300 disabled:opacity-50">
+                <Loader2 v-if="isSaving" class="w-4 h-4 animate-spin" />
+                <Save v-else class="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                {{ isSaving ? 'Menyimpan...' : 'Simpan Perubahan' }}
+            </button>
         </div>
 
         <!-- Delete Confirmation Modal -->
@@ -185,5 +218,15 @@ const getCategoryCount = (name) => name === 'all' ? items.value.length : items.v
             @confirm="executeDelete"
             @close="showDeleteModal = false"
         />
-    </AdminLayout>
+    </div>
 </template>
+
+<style scoped>
+.slide-enter-active, .slide-leave-active {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.slide-enter-from, .slide-leave-to {
+    opacity: 0;
+    transform: translateY(-16px);
+}
+</style>

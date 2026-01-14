@@ -5,12 +5,24 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\FloraComment;
 use App\Models\Flora;
+use App\Services\NotificationService;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class AdminFloraCommentController extends Controller
 {
+    protected NotificationService $notificationService;
+    protected PushNotificationService $pushNotificationService;
+
+    public function __construct(
+        NotificationService $notificationService,
+        PushNotificationService $pushNotificationService
+    ) {
+        $this->notificationService = $notificationService;
+        $this->pushNotificationService = $pushNotificationService;
+    }
     public function index(Request $request)
     {
         $query = FloraComment::with(['user', 'admin', 'flora', 'replies.user', 'replies.admin'])
@@ -90,6 +102,42 @@ class AdminFloraCommentController extends Controller
             'parent_id' => $comment->id,
             'is_approved' => true,
         ]);
+
+        // Send notification to original commenter and thread participants
+        $flora = $comment->flora;
+        if ($flora && $comment->user_id) {
+            // Get all participants in this thread
+            $participantUserIds = FloraComment::where('flora_id', $comment->flora_id)
+                ->where(function ($q) use ($comment) {
+                    $q->where('id', $comment->id)
+                        ->orWhere('parent_id', $comment->id);
+                })
+                ->whereNotNull('user_id')
+                ->pluck('user_id')
+                ->unique()
+                ->toArray();
+
+            $url = route('flora.show', $flora->slug);
+
+            // Send in-app notifications
+            $this->notificationService->notifyCommentReply(
+                $comment->user_id,
+                $participantUserIds,
+                'Flora',
+                $flora->name,
+                $url
+            );
+
+            // Send push notifications
+            foreach (array_unique(array_filter(array_merge([$comment->user_id], $participantUserIds))) as $userId) {
+                $this->pushNotificationService->notifyCommentReply(
+                    $userId,
+                    'Flora',
+                    $flora->name,
+                    $url
+                );
+            }
+        }
 
         return response()->json([
             'success' => true,

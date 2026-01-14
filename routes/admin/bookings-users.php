@@ -23,6 +23,7 @@ Route::middleware(['auth:admin', 'menu.access'])->group(function () {
         Route::patch('/{booking}/status', [AdminBookingController::class, 'updateStatus'])->name('update-status');
         Route::post('/{booking}/cancel', [AdminBookingController::class, 'cancel'])->name('cancel');
         Route::post('/{booking}/send-ticket', [AdminBookingController::class, 'sendTicket'])->name('send-ticket');
+        Route::get('/{booking}/invoice', [AdminBookingController::class, 'downloadInvoice'])->name('invoice');
         Route::delete('/{booking}', [AdminBookingController::class, 'destroy'])->name('destroy');
     });
     Route::get('/bookings-export', [AdminBookingController::class, 'export'])->name('bookings.export');

@@ -106,7 +106,7 @@ class BookingController extends Controller
         $destination = Destination::where('slug', $slug)->active()->with('prices')->firstOrFail();
 
         $validated = $request->validate([
-            'visit_date' => 'required|date|after:today',
+            'visit_date' => 'required|date|after_or_equal:today',
             'leader_name' => 'required|string|max:255',
             'leader_phone' => 'required|string|max:20',
             'leader_email' => 'required|email',
@@ -164,6 +164,42 @@ class BookingController extends Controller
                 $booking->items()->create($item);
             }
 
+            // If total is 0 (free due to coupon), auto-confirm payment
+            if ($totalAmount <= 0) {
+                $booking->update([
+                    'status' => Booking::STATUS_CONFIRMED,
+                    'confirmed_at' => now(),
+                ]);
+
+                // Create free payment record
+                $booking->payments()->create([
+                    'order_id' => $booking->order_number,
+                    'payment_type' => 'free',
+                    'payment_channel' => 'coupon',
+                    'gross_amount' => 0,
+                    'status' => 'success',
+                    'paid_at' => now(),
+                ]);
+
+                // Mark coupon as used
+                if ($couponResult['discount_code']) {
+                    $coupon = \App\Models\Coupon::findByCode($couponResult['discount_code']);
+                    if ($coupon && auth()->id()) {
+                        $coupon->markAsUsed(auth()->id(), $booking->id);
+                    }
+                }
+
+                // Generate tickets
+                app(\App\Services\TicketService::class)->generateTicketsForBooking($booking);
+
+                DB::commit();
+
+                $this->notificationService->notifyBookingCreated($booking);
+                $this->notificationService->notifyPaymentSuccess($booking);
+
+                return redirect()->route('booking.success', $booking->order_number);
+            }
+
             DB::commit();
 
             $this->notificationService->notifyBookingCreated($booking);
@@ -184,12 +220,12 @@ class BookingController extends Controller
     {
         $booking = $this->getBookingByOrder($orderNumber);
 
-        if (!in_array($booking->status, [Booking::STATUS_PENDING, Booking::STATUS_AWAITING_CASH])) {
-            return redirect()->route('booking.success', $booking->order_number);
-        }
+        // Auto-heal: check Midtrans status first before creating new snap token
+        // This prevents "order_id sudah digunakan" error when payment was already completed
+        $booking = $this->bookingService->autoHealBooking($booking, $this->midtransService);
 
-        if ($booking->status === Booking::STATUS_AWAITING_CASH) {
-            $booking->update(['status' => Booking::STATUS_PENDING]);
+        if ($booking->status !== Booking::STATUS_PENDING) {
+            return redirect()->route('booking.success', $booking->order_number);
         }
 
         $snapToken = null;
@@ -240,14 +276,188 @@ class BookingController extends Controller
      */
     public function downloadTicket($orderNumber)
     {
+        try {
+            $booking = $this->getBookingByOrder($orderNumber);
+
+            if (!in_array($booking->status, [Booking::STATUS_CONFIRMED, Booking::STATUS_CONFIRMED, 'used'])) {
+                return back()->with('error', 'E-Ticket hanya tersedia untuk pesanan yang sudah lunas.');
+            }
+
+            $booking->load(['destination', 'tickets', 'items']);
+
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.ticket', compact('booking'));
+
+            return $pdf->download('E-Ticket-TNLL-' . $booking->order_number . '.pdf');
+        } catch (\Exception $e) {
+            \Log::error('PDF Download Error: ' . $e->getMessage() . ' | ' . $e->getTraceAsString());
+            return back()->with('error', 'Gagal membuat PDF: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Download Invoice PDF (80mm POS format).
+     */
+    public function downloadInvoice($orderNumber)
+    {
+        try {
+            $booking = $this->getBookingByOrder($orderNumber);
+
+            $booking->load(['destination', 'items', 'payment']);
+
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', compact('booking'))
+                ->setPaper([0, 0, 226.77, 600], 'portrait'); // 80mm width, auto height
+
+            return $pdf->download('Invoice-TNLL-' . $booking->order_number . '.pdf');
+        } catch (\Exception $e) {
+            \Log::error('Invoice PDF Error: ' . $e->getMessage());
+            return back()->with('error', 'Gagal membuat invoice: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Show edit form for pending booking.
+     */
+    public function edit($orderNumber)
+    {
         $booking = $this->getBookingByOrder($orderNumber);
 
-        if ($booking->status !== Booking::STATUS_PAID) {
-            return back()->with('error', 'E-Ticket hanya tersedia untuk pesanan yang sudah lunas.');
+        // Only allow editing pending bookings
+        if ($booking->status !== Booking::STATUS_PENDING) {
+            return redirect()->route('booking.show', $orderNumber)
+                ->with('error', 'Booking yang sudah dibayar tidak dapat diubah.');
         }
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.ticket', compact('booking'));
+        $booking->load(['destination.prices' => fn($q) => $q->where('is_active', true), 'items']);
 
-        return $pdf->download('E-Ticket-TNLL-' . $booking->order_number . '.pdf');
+        // Get available coupons
+        $coupons = \App\Models\Coupon::valid()
+            ->get()
+            ->filter(fn($coupon) => $this->isCouponApplicable($coupon, $booking->destination))
+            ->values();
+
+        return \Inertia\Inertia::render('Booking/Edit', [
+            'booking' => $booking,
+            'destination' => $booking->destination,
+            'coupons' => $coupons,
+        ]);
+    }
+
+    /**
+     * Update pending booking.
+     */
+    public function update(Request $request, $orderNumber)
+    {
+        $booking = $this->getBookingByOrder($orderNumber);
+
+        // Only allow updating pending bookings
+        if ($booking->status !== Booking::STATUS_PENDING) {
+            return back()->with('error', 'Booking yang sudah dibayar tidak dapat diubah.');
+        }
+
+        $destination = $booking->destination->load('prices');
+
+        $validated = $request->validate([
+            'visit_date' => 'required|date|after_or_equal:today',
+            'leader_name' => 'required|string|max:255',
+            'leader_phone' => 'required|string|max:20',
+            'leader_email' => 'required|email',
+            'quantities' => 'required|array',
+            'quantities.*' => 'integer|min:0',
+            'coupon_code' => 'nullable|string|max:50',
+        ]);
+
+        // Calculate booking items
+        $calculation = $this->bookingService->calculateBookingItems(
+            $validated['quantities'],
+            $destination->prices
+        );
+
+        // Validate at least 1 visitor
+        if ($calculation['total_visitors'] < 1) {
+            return back()->withErrors(['quantities' => 'Minimal 1 pengunjung diperlukan.'])->withInput();
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $serviceFee = 5000;
+            $grossTotal = $calculation['subtotal'] + $serviceFee;
+
+            // Apply coupon
+            $couponResult = $this->bookingService->applyCoupon(
+                $validated['coupon_code'] ?? null,
+                $grossTotal,
+                $destination->id
+            );
+
+            $totalAmount = max(0, $grossTotal - $couponResult['discount']);
+
+            // Update booking
+            $booking->update(array_merge([
+                'visit_date' => $validated['visit_date'],
+                'leader_name' => $validated['leader_name'],
+                'leader_phone' => $validated['leader_phone'],
+                'leader_email' => $validated['leader_email'],
+                'total_visitors' => $calculation['total_visitors'],
+                'subtotal' => $calculation['subtotal'],
+                'service_fee' => $serviceFee,
+                'discount' => $couponResult['discount'],
+                'discount_code' => $couponResult['discount_code'],
+                'total_amount' => $totalAmount,
+            ], $calculation['summary']));
+
+            // Delete old items and create new ones
+            $booking->items()->delete();
+            foreach ($calculation['items'] as $item) {
+                $booking->items()->create($item);
+            }
+
+            // If total is 0 (free due to coupon), auto-confirm payment
+            if ($totalAmount <= 0) {
+                $booking->update([
+                    'status' => Booking::STATUS_CONFIRMED,
+                    'confirmed_at' => now(),
+                ]);
+
+                // Create free payment record
+                $booking->payments()->delete();
+                $booking->payments()->create([
+                    'order_id' => $booking->order_number,
+                    'payment_type' => 'free',
+                    'payment_channel' => 'coupon',
+                    'gross_amount' => 0,
+                    'status' => 'success',
+                    'paid_at' => now(),
+                ]);
+
+                // Mark coupon as used
+                if ($couponResult['discount_code']) {
+                    $coupon = \App\Models\Coupon::findByCode($couponResult['discount_code']);
+                    if ($coupon && auth()->id()) {
+                        $coupon->markAsUsed(auth()->id(), $booking->id);
+                    }
+                }
+
+                // Generate tickets
+                app(\App\Services\TicketService::class)->generateTicketsForBooking($booking);
+
+                DB::commit();
+
+                $this->notificationService->notifyPaymentSuccess($booking);
+
+                return redirect()->route('booking.success', $booking->order_number)
+                    ->with('success', 'Booking berhasil diperbarui dan dikonfirmasi!');
+            }
+
+            DB::commit();
+
+            return redirect()->route('booking.payment', $booking->order_number)
+                ->with('success', 'Booking berhasil diperbarui!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Booking update error: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Terjadi kesalahan: ' . $e->getMessage()])->withInput();
+        }
     }
 }

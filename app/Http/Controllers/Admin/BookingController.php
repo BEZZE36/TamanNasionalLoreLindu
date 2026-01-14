@@ -8,24 +8,24 @@ use App\Models\Destination;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\Admin\BookingService;
+use App\Traits\LogsActivity;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class BookingController extends Controller
 {
+    use LogsActivity;
+
     public function __construct(
         protected BookingService $bookingService
     ) {
     }
 
-    /**
-     * Get pending bookings count for sidebar badge
-     */
     public function pendingCount()
     {
         $count = Booking::where('status', 'pending')->count();
-
         return response()->json(['count' => $count]);
     }
 
@@ -63,6 +63,7 @@ class BookingController extends Controller
             'leader_name' => $b->leader_name,
             'leader_phone' => $b->leader_phone,
             'leader_email' => $b->leader_email,
+            'user_avatar' => $b->user?->avatar_url ?? null,
             'visit_date' => $b->visit_date,
             'total_visitors' => $b->total_visitors,
             'total_amount' => $b->total_amount,
@@ -74,10 +75,22 @@ class BookingController extends Controller
         ]);
         $destinations = Destination::select('id', 'name')->get();
 
+        $stats = [
+            'total' => Booking::count(),
+            'pending' => Booking::where('status', 'pending')->count(),
+            'paid' => Booking::where('status', 'paid')->count(),
+            'confirmed' => Booking::where('status', 'confirmed')->count(),
+            'used' => Booking::where('status', 'used')->count(),
+            'cancelled' => Booking::where('status', 'cancelled')->count(),
+            'revenue' => Booking::whereIn('status', ['paid', 'confirmed', 'used'])->sum('total_amount'),
+            'this_month' => Booking::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count(),
+        ];
+
         return Inertia::render('Admin/Bookings/Index', [
             'bookings' => $bookings,
             'destinations' => $destinations,
             'filters' => $request->only(['search', 'destination_id', 'status']),
+            'stats' => $stats,
         ]);
     }
 
@@ -88,7 +101,7 @@ class BookingController extends Controller
             'name' => $d->name,
             'prices' => $d->prices->map(fn($p) => ['category' => $p->category, 'price' => $p->price])->toArray(),
         ]);
-        $users = User::latest()->limit(50)->get(['id', 'name', 'email', 'phone_number']);
+        $users = User::latest()->limit(50)->get(['id', 'name', 'email', 'phone']);
 
         return Inertia::render('Admin/Bookings/Create', [
             'destinations' => $destinations,
@@ -99,10 +112,8 @@ class BookingController extends Controller
     public function store(Request $request)
     {
         $validated = $this->validateBookingRequest($request);
-
         $destination = Destination::with('prices')->findOrFail($validated['destination_id']);
 
-        // Validate at least 1 visitor
         $totalVisitors = ($validated['total_adults'] ?? 0) + ($validated['total_children'] ?? 0) + ($validated['total_seniors'] ?? 0);
         if ($totalVisitors < 1) {
             return back()->withErrors(['total_adults' => 'Minimal 1 pengunjung diperlukan.'])->withInput();
@@ -112,10 +123,11 @@ class BookingController extends Controller
         try {
             $booking = $this->bookingService->createBooking($validated, $destination);
 
-            // Handle Payment Status if Paid/Confirmed
             if (in_array($booking->status, ['paid', 'confirmed'])) {
                 $this->bookingService->processPaymentAndTickets($booking);
             }
+
+            $this->logCreate($booking, 'Booking', $booking->order_number);
 
             DB::commit();
             return redirect()->route('admin.bookings.show', $booking)->with('success', 'Booking berhasil dibuat.');
@@ -177,7 +189,7 @@ class BookingController extends Controller
                 'leader_name' => $booking->leader_name,
                 'leader_email' => $booking->leader_email,
                 'leader_phone' => $booking->leader_phone,
-                'visit_date' => $booking->visit_date,
+                'visit_date' => $booking->visit_date?->format('Y-m-d'),
                 'total_visitors' => $booking->total_visitors,
                 'total_amount' => $booking->total_amount,
                 'status' => $booking->status,
@@ -198,9 +210,15 @@ class BookingController extends Controller
             'status' => 'required|in:pending,paid,confirmed,cancelled,used',
         ]);
 
+        $oldValues = $booking->only(['visit_date', 'leader_name', 'status']);
+
         DB::beginTransaction();
         try {
             $this->bookingService->updateBooking($booking, $validated);
+
+            $newValues = $booking->fresh()->only(['visit_date', 'leader_name', 'status']);
+            $this->logUpdate($booking, 'Booking', $oldValues, $newValues, $booking->order_number);
+
             DB::commit();
             return redirect()->route('admin.bookings.show', $booking)->with('success', 'Booking berhasil diperbarui.');
         } catch (\Exception $e) {
@@ -215,12 +233,14 @@ class BookingController extends Controller
             'status' => 'required|in:pending,paid,confirmed,used,cancelled,expired',
         ]);
 
+        $oldStatus = $booking->status;
         $booking->update(['status' => $validated['status']]);
 
-        // Auto generate tickets if marked as paid/confirmed
         if (in_array($validated['status'], ['paid', 'confirmed']) && $booking->tickets->isEmpty()) {
             $this->bookingService->processPaymentAndTickets($booking);
         }
+
+        $this->logActivity('update', "Mengubah status booking {$booking->order_number}: {$oldStatus} → {$validated['status']}", $booking, ['status' => $oldStatus], ['status' => $validated['status']]);
 
         return back()->with('success', 'Status booking berhasil diperbarui.');
     }
@@ -231,6 +251,7 @@ class BookingController extends Controller
             return back()->with('error', 'Booking sudah dibatalkan.');
         }
 
+        $oldStatus = $booking->status;
         $booking->update(['status' => Booking::STATUS_CANCELLED]);
 
         if ($booking->payment && $booking->payment->status === Payment::STATUS_PENDING) {
@@ -238,6 +259,8 @@ class BookingController extends Controller
         }
 
         $booking->tickets()->update(['status' => 'cancelled']);
+
+        $this->logActivity('update', "Membatalkan booking: {$booking->order_number}", $booking, ['status' => $oldStatus], ['status' => 'cancelled']);
 
         return back()->with('success', 'Booking berhasil dibatalkan.');
     }
@@ -249,58 +272,131 @@ class BookingController extends Controller
         }
 
         if ($booking->tickets->isEmpty()) {
-            $this->bookingService->processPaymentAndTickets($booking, 'manual_resend');
+            $this->bookingService->processPaymentAndTickets($booking, 'cash');
             $booking->refresh();
         }
 
         $success = $this->bookingService->sendConfirmationEmail($booking);
+
+        if ($success) {
+            $this->logSend($booking, 'E-Ticket', $booking->order_number);
+        }
 
         return $success
             ? back()->with('success', 'E-Ticket berhasil dikirim ke email user.')
             : back()->with('error', 'Gagal mengirim email.');
     }
 
+    public function downloadInvoice(Booking $booking)
+    {
+        $booking->load(['destination', 'items', 'payment']);
+
+        $pdf = Pdf::loadView('pdf.invoice', compact('booking'))
+            ->setPaper([0, 0, 226.77, 600], 'portrait');
+
+        return $pdf->download('Invoice-TNLL-' . $booking->order_number . '.pdf');
+    }
+
     public function export(Request $request)
     {
+        $format = $request->get('format', 'csv');
+
         $bookings = Booking::with(['user', 'destination', 'payment'])
             ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
+            ->when($request->filled('search'), fn($q) => $q->where(function ($query) use ($request) {
+                $query->where('order_number', 'like', '%' . $request->search . '%')
+                    ->orWhere('leader_name', 'like', '%' . $request->search . '%');
+            }))
+            ->when($request->filled('destination_id'), fn($q) => $q->where('destination_id', $request->destination_id))
             ->when($request->filled('date_from'), fn($q) => $q->whereDate('visit_date', '>=', $request->date_from))
             ->when($request->filled('date_to'), fn($q) => $q->whereDate('visit_date', '<=', $request->date_to))
+            ->latest()
             ->get();
 
+        $data = $bookings->map(fn($b) => [
+            'Order Number' => $b->order_number,
+            'Tanggal Booking' => $b->created_at->format('d/m/Y H:i'),
+            'Tanggal Kunjungan' => $b->visit_date instanceof \DateTimeInterface ? $b->visit_date->format('d/m/Y') : $b->visit_date,
+            'Destinasi' => $b->destination->name ?? '-',
+            'Nama Ketua' => $b->leader_name,
+            'Email' => $b->leader_email,
+            'Telepon' => $b->leader_phone,
+            'Total Pengunjung' => $b->total_visitors,
+            'Total Amount' => 'Rp ' . number_format($b->total_amount, 0, ',', '.'),
+            'Status' => ucfirst($b->status),
+            'Status Pembayaran' => ucfirst($b->payment?->status ?? 'N/A'),
+        ])->toArray();
+
+        $this->logExport('Booking', strtoupper($format), count($data));
+
+        if ($format === 'pdf') {
+            return $this->exportPdf($data, $bookings);
+        }
+
+        if ($format === 'excel') {
+            return $this->exportExcel($data);
+        }
+
+        return $this->exportCsv($data);
+    }
+
+    protected function exportCsv(array $data)
+    {
         $filename = 'bookings-' . now()->format('YmdHis') . '.csv';
 
-        $callback = function () use ($bookings) {
+        $callback = function () use ($data) {
             $file = fopen('php://output', 'w');
-            fputcsv($file, ['Order Number', 'Tanggal Booking', 'Tanggal Kunjungan', 'Destinasi', 'Nama Ketua', 'Email', 'Telepon', 'Total Pengunjung', 'Total Amount', 'Status', 'Status Pembayaran']);
-            foreach ($bookings as $booking) {
-                fputcsv($file, [
-                    $booking->order_number,
-                    $booking->created_at->format('d/m/Y H:i'),
-                    $booking->visit_date instanceof \DateTimeInterface ? $booking->visit_date->format('d/m/Y') : $booking->visit_date,
-                    $booking->destination->name ?? '-',
-                    $booking->leader_name,
-                    $booking->leader_email,
-                    $booking->leader_phone,
-                    $booking->total_visitors,
-                    $booking->total_amount,
-                    $booking->status,
-                    $booking->payment?->status ?? 'N/A',
-                ]);
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            if (!empty($data)) {
+                fputcsv($file, array_keys($data[0]));
+                foreach ($data as $row) {
+                    fputcsv($file, $row);
+                }
             }
             fclose($file);
         };
 
         return response()->stream($callback, 200, [
-            'Content-Type' => 'text/csv',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=$filename",
         ]);
+    }
+
+    protected function exportExcel(array $data)
+    {
+        $filename = 'bookings-' . now()->format('YmdHis') . '.xlsx';
+
+        $export = new \App\Exports\BookingsExport($data);
+        return $export->download($filename);
+    }
+
+    protected function exportPdf(array $data, $bookings)
+    {
+        $filename = 'bookings-' . now()->format('YmdHis') . '.pdf';
+
+        $stats = [
+            'total' => count($data),
+            'total_revenue' => $bookings->whereIn('status', ['paid', 'confirmed', 'used'])->sum('total_amount'),
+        ];
+
+        $pdf = Pdf::loadView('exports.bookings-pdf', [
+            'bookings' => $data,
+            'stats' => $stats,
+            'generated_at' => now()->format('d/m/Y H:i'),
+        ])->setPaper('a4', 'landscape');
+
+        return $pdf->download($filename);
     }
 
     public function destroy(Booking $booking)
     {
         DB::beginTransaction();
         try {
+            $orderNumber = $booking->order_number;
+
+            $this->logDelete($booking, 'Booking', $orderNumber);
+
             $booking->tickets()->delete();
             $booking->items()->delete();
             $booking->payments()->delete();
@@ -315,9 +411,6 @@ class BookingController extends Controller
         }
     }
 
-    /**
-     * Validation rules for booking creation
-     */
     protected function validateBookingRequest(Request $request): array
     {
         return $request->validate([

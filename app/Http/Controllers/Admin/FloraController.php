@@ -6,16 +6,80 @@ use App\Http\Controllers\Controller;
 use App\Models\Flora;
 use App\Models\FloraImage;
 use App\Services\Admin\FloraService;
+use App\Services\NotificationService;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class FloraController extends Controller
 {
     protected FloraService $floraService;
+    protected NotificationService $notificationService;
+    protected PushNotificationService $pushNotificationService;
 
-    public function __construct(FloraService $floraService)
-    {
+    public function __construct(
+        FloraService $floraService,
+        NotificationService $notificationService,
+        PushNotificationService $pushNotificationService
+    ) {
         $this->floraService = $floraService;
+        $this->notificationService = $notificationService;
+        $this->pushNotificationService = $pushNotificationService;
+    }
+
+    public function dashboard(Request $request)
+    {
+        $period = $request->get('period', 30);
+        $startDate = now()->subDays($period);
+
+        $stats = [
+            'total' => Flora::count(),
+            'published' => Flora::where('is_active', true)->count(),
+            'draft' => Flora::where('is_active', false)->count(),
+            'featured' => Flora::where('is_featured', true)->count(),
+            'endangered' => Flora::where('category', 'langka')->count(),
+            'endemic' => Flora::where('category', 'endemik')->count(),
+            'total_views' => Flora::sum('view_count'),
+            'total_comments' => \App\Models\FloraComment::count(),
+        ];
+
+        // Generate viewsChart data based on created_at dates
+        $viewsChart = collect(range(0, $period - 1))->map(function ($i) use ($startDate) {
+            $date = $startDate->copy()->addDays($i);
+            return [
+                'date' => $date->format('d M'),
+                'views' => Flora::whereDate('created_at', $date)->sum('view_count'),
+            ];
+        })->values()->toArray();
+
+        $topFlora = Flora::orderBy('view_count', 'desc')
+            ->take(10)
+            ->get()
+            ->map(fn($f) => [
+                'id' => $f->id,
+                'name' => $f->name,
+                'category' => $f->category,
+                'views_count' => $f->view_count,
+            ]);
+
+        $recentFlora = Flora::latest()
+            ->take(8)
+            ->get()
+            ->map(fn($f) => [
+                'id' => $f->id,
+                'name' => $f->name,
+                'scientific_name' => $f->scientific_name,
+                'category' => $f->category,
+                'image_url' => $f->image_url,
+            ]);
+
+        return \Inertia\Inertia::render('Admin/Flora/Dashboard', [
+            'stats' => $stats,
+            'viewsChart' => $viewsChart,
+            'topFlora' => $topFlora,
+            'recentFlora' => $recentFlora,
+            'period' => $period,
+        ]);
     }
 
     public function index(Request $request)
@@ -71,12 +135,28 @@ class FloraController extends Controller
             'conservation_status' => 'nullable|string',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string',
-            'is_featured' => 'boolean',
-            'is_active' => 'boolean',
-            'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'is_featured' => 'nullable',
+            'is_active' => 'nullable',
+            'gallery' => 'nullable|array',
+            'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
-        $this->floraService->createFlora($validated, $request);
+        $flora = $this->floraService->createFlora($validated, $request);
+
+        // Send notifications to all users
+        if ($flora->is_active) {
+            $url = route('flora.show', $flora->slug);
+            $this->notificationService->notifyNewFlora(
+                $flora->name,
+                $flora->description ?? '',
+                $url
+            );
+            $this->pushNotificationService->notifyNewFlora(
+                $flora->name,
+                $flora->description ?? '',
+                $url
+            );
+        }
 
         return redirect()->route('admin.flora.index')
             ->with('success', 'Flora berhasil ditambahkan.');
@@ -105,7 +185,8 @@ class FloraController extends Controller
             'meta_description' => 'nullable|string',
             'is_featured' => 'boolean',
             'is_active' => 'boolean',
-            'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'gallery' => 'nullable|array',
+            'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         $this->floraService->updateFlora($flora, $validated, $request);

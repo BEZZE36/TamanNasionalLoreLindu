@@ -25,14 +25,26 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'readonly' => \App\Http\Middleware\CheckReadOnly::class,
             'menu.access' => \App\Http\Middleware\CheckMenuAccess::class,
+            'blocked.admin' => \App\Http\Middleware\CheckBlockedAdmin::class,
         ]);
 
 
         $middleware->validateCsrfTokens(except: [
             'payment/notification',
             'gallery/*/track-view',
+            'articles/views/*/time-spent',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Handle 419 CSRF token mismatch dengan response yang lebih user-friendly
+        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, $request) {
+            if ($request->expectsJson() || $request->header('X-Inertia')) {
+                return response()->json([
+                    'message' => 'Token keamanan kadaluarsa. Halaman akan dimuat ulang.',
+                ], 419);
+            }
+
+            // Redirect back with error message untuk non-AJAX requests
+            return redirect()->back()->with('error', 'Token keamanan kadaluarsa. Silakan coba lagi.');
+        });
     })->create();

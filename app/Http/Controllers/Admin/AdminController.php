@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -13,18 +14,17 @@ use Inertia\Inertia;
 
 class AdminController extends Controller
 {
+    use LogsActivity;
+
     public function __construct()
     {
-        // Check for permission to access admin management
         $this->middleware(function ($request, $next) {
             $admin = Auth::guard('admin')->user();
 
-            // Super admin has all permissions
             if ($admin->isSuperAdmin()) {
                 return $next($request);
             }
 
-            // Check if admin has 'access-admins' permission
             if (!$admin->hasPermission('access-admins')) {
                 abort(403, 'Akses ditolak. Anda tidak memiliki izin untuk mengelola akun admin.');
             }
@@ -37,10 +37,8 @@ class AdminController extends Controller
     {
         $currentAdminId = Auth::guard('admin')->id();
 
-        // Build query with filters
         $query = Admin::with('creator', 'roles');
 
-        // Search filter
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
@@ -49,7 +47,6 @@ class AdminController extends Controller
             });
         }
 
-        // Status filter
         if ($status = $request->input('status')) {
             if ($status === 'active') {
                 $query->where('is_active', true);
@@ -58,19 +55,15 @@ class AdminController extends Controller
             }
         }
 
-        // Role filter
         if ($role = $request->input('role')) {
             $query->where('role', $role);
         }
 
-        // Order by role priority and name
         $query->orderByRaw("role = 'super_admin' DESC")
             ->orderBy('name');
 
-        // Paginate
         $admins = $query->paginate(10)->withQueryString();
 
-        // Transform data
         $admins->getCollection()->transform(fn($admin) => [
             'id' => $admin->id,
             'name' => $admin->name,
@@ -81,11 +74,12 @@ class AdminController extends Controller
             'created_at' => $admin->created_at,
             'creator' => $admin->creator ? ['name' => $admin->creator->name] : null,
             'roles' => $admin->roles->map(fn($r) => ['id' => $r->id, 'name' => $r->name, 'slug' => $r->slug]),
-            'can_edit' => !$admin->isSuperAdmin() || $admin->id === $currentAdminId,
-            'can_delete' => !$admin->isSuperAdmin() && $admin->id !== $currentAdminId,
+            // Semua aksi bisa dilakukan KECUALI untuk akun sendiri yang sedang login
+            'can_edit' => $admin->id !== $currentAdminId,
+            'can_delete' => $admin->id !== $currentAdminId,
+            'can_toggle' => $admin->id !== $currentAdminId,
         ]);
 
-        // Calculate stats
         $stats = [
             'total' => Admin::count(),
             'active' => Admin::where('is_active', true)->count(),
@@ -120,7 +114,9 @@ class AdminController extends Controller
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['created_by'] = Auth::guard('admin')->id();
 
-        Admin::create($validated);
+        $admin = Admin::create($validated);
+
+        $this->logCreate($admin, 'Admin', $admin->name);
 
         return redirect()->route('admin.admins.index')
             ->with('success', 'Admin berhasil ditambahkan.');
@@ -128,28 +124,37 @@ class AdminController extends Controller
 
     public function edit(Admin $admin)
     {
-        // Cannot edit super_admin if not self
-        if ($admin->isSuperAdmin() && $admin->id !== Auth::guard('admin')->id()) {
-            return back()->with('error', 'Tidak dapat mengedit Super Admin lain.');
+        // Admin tidak bisa mengedit akun sendiri dari halaman ini
+        if ($admin->id === Auth::guard('admin')->id()) {
+            return redirect()->route('admin.admins.index')
+                ->with('error', 'Tidak dapat mengedit akun sendiri dari halaman ini. Gunakan halaman profil.');
         }
 
+        // Load admin's current roles
+        $admin->load('roles');
+
+        // Get all available roles
+        $availableRoles = \App\Models\Role::select('id', 'name', 'slug')->orderBy('name')->get();
+
         return Inertia::render('Admin/Admins/Edit', [
-            'admin' => [
+            'editAdmin' => [
                 'id' => $admin->id,
                 'name' => $admin->name,
                 'email' => $admin->email,
                 'username' => $admin->username,
                 'role' => $admin->role,
                 'is_active' => $admin->is_active,
-            ]
+                'role_ids' => $admin->roles->pluck('id')->toArray(),
+            ],
+            'availableRoles' => $availableRoles,
         ]);
     }
 
     public function update(Request $request, Admin $admin)
     {
-        // Cannot edit super_admin if not self
-        if ($admin->isSuperAdmin() && $admin->id !== Auth::guard('admin')->id()) {
-            return back()->with('error', 'Tidak dapat mengedit Super Admin lain.');
+        // Admin tidak bisa mengedit akun sendiri dari halaman ini
+        if ($admin->id === Auth::guard('admin')->id()) {
+            return back()->with('error', 'Tidak dapat mengedit akun sendiri dari halaman ini. Gunakan halaman profil.');
         }
 
         $validated = $request->validate([
@@ -159,7 +164,11 @@ class AdminController extends Controller
             'password' => ['nullable', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()],
             'role' => 'required|in:admin,super_admin',
             'is_active' => 'boolean',
+            'role_ids' => 'array',
+            'role_ids.*' => 'exists:roles,id',
         ]);
+
+        $oldValues = $admin->only(['name', 'email', 'role', 'is_active']);
 
         if (!empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
@@ -169,7 +178,17 @@ class AdminController extends Controller
 
         $validated['is_active'] = $request->boolean('is_active');
 
+        // Remove role_ids from validated before update (it's handled separately)
+        $roleIds = $validated['role_ids'] ?? [];
+        unset($validated['role_ids']);
+
         $admin->update($validated);
+
+        // Sync roles
+        $admin->roles()->sync($roleIds);
+
+        $newValues = $admin->only(['name', 'email', 'role', 'is_active']);
+        $this->logUpdate($admin, 'Admin', $oldValues, $newValues, $admin->name);
 
         return redirect()->route('admin.admins.index')
             ->with('success', 'Admin berhasil diperbarui.');
@@ -177,15 +196,13 @@ class AdminController extends Controller
 
     public function destroy(Admin $admin)
     {
-        // Cannot delete super_admin
-        if ($admin->isSuperAdmin()) {
-            return back()->with('error', 'Tidak dapat menghapus Super Admin.');
-        }
-
-        // Cannot delete self
+        // Admin tidak bisa menghapus akun sendiri
         if ($admin->id === Auth::guard('admin')->id()) {
             return back()->with('error', 'Tidak dapat menghapus akun sendiri.');
         }
+
+        $name = $admin->name;
+        $this->logDelete($admin, 'Admin', $name);
 
         $admin->delete();
 
@@ -195,17 +212,14 @@ class AdminController extends Controller
 
     public function toggleStatus(Admin $admin)
     {
-        // Cannot toggle super_admin
-        if ($admin->isSuperAdmin()) {
-            return back()->with('error', 'Tidak dapat mengubah status Super Admin.');
-        }
-
-        // Cannot toggle self
+        // Admin tidak bisa mengubah status akun sendiri
         if ($admin->id === Auth::guard('admin')->id()) {
             return back()->with('error', 'Tidak dapat mengubah status akun sendiri.');
         }
 
         $admin->update(['is_active' => !$admin->is_active]);
+
+        $this->logToggle($admin, 'Admin', 'is_active', $admin->is_active, $admin->name);
 
         return back()->with('success', 'Status admin berhasil diperbarui.');
     }
@@ -234,7 +248,11 @@ class AdminController extends Controller
             'username' => 'required|string|max:50|unique:admins,username,' . $admin->id . '|alpha_dash',
         ]);
 
+        $oldValues = $admin->only(['name', 'email']);
         $admin->update($validated);
+        $newValues = $admin->only(['name', 'email']);
+
+        $this->logUpdate($admin, 'Profil Admin', $oldValues, $newValues, $admin->name);
 
         return back()->with('success', 'Profil berhasil diperbarui.');
     }
@@ -255,6 +273,8 @@ class AdminController extends Controller
         $admin->update([
             'password' => Hash::make($request->password),
         ]);
+
+        $this->logActivity('update', "Mengubah password profil", $admin);
 
         return back()->with('success', 'Password berhasil diperbarui.');
     }

@@ -7,15 +7,89 @@ use App\Models\Destination;
 use App\Models\DestinationImage;
 use App\Models\DestinationCategory;
 use App\Services\Admin\DestinationService;
+use App\Services\NotificationService;
+use App\Services\PushNotificationService;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 
 class DestinationController extends Controller
 {
-    protected DestinationService $destinationService;
+    use LogsActivity;
 
-    public function __construct(DestinationService $destinationService)
-    {
+    protected DestinationService $destinationService;
+    protected NotificationService $notificationService;
+    protected PushNotificationService $pushNotificationService;
+
+    public function __construct(
+        DestinationService $destinationService,
+        NotificationService $notificationService,
+        PushNotificationService $pushNotificationService
+    ) {
         $this->destinationService = $destinationService;
+        $this->notificationService = $notificationService;
+        $this->pushNotificationService = $pushNotificationService;
+    }
+
+    public function dashboard(Request $request)
+    {
+        $period = $request->get('period', 30);
+        $startDate = now()->subDays($period);
+
+        $stats = [
+            'total' => Destination::count(),
+            'published' => Destination::where('is_active', true)->count(),
+            'draft' => Destination::where('is_active', false)->count(),
+            'featured' => Destination::where('is_featured', true)->count(),
+            'total_views' => Destination::sum('views_count'),
+        ];
+
+        $bookingStats = [
+            'total_bookings' => \App\Models\Booking::where('created_at', '>=', $startDate)->count(),
+            'total_visitors' => \App\Models\Booking::whereIn('status', ['paid', 'confirmed', 'used'])
+                ->where('created_at', '>=', $startDate)->sum('total_visitors'),
+            'revenue' => \App\Models\Booking::whereIn('status', ['paid', 'confirmed', 'used'])
+                ->where('created_at', '>=', $startDate)->sum('total_amount'),
+        ];
+
+        // Generate views chart data - use visitor_count per booking per day
+        $viewsChart = ['labels' => [], 'data' => []];
+        for ($i = $period - 1; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $viewsChart['labels'][] = $date->format('d M');
+            $viewsChart['data'][] = \App\Models\Booking::whereIn('status', ['paid', 'confirmed', 'used'])
+                ->whereDate('created_at', $date->toDateString())
+                ->sum('total_visitors');
+        }
+
+        $topDestinations = Destination::orderBy('views_count', 'desc')
+            ->take(10)
+            ->get()
+            ->map(fn($d) => [
+                'id' => $d->id,
+                'name' => $d->name,
+                'city' => $d->city,
+                'views_count' => $d->views_count,
+            ]);
+
+        $recentDestinations = Destination::latest()
+            ->take(8)
+            ->get()
+            ->map(fn($d) => [
+                'id' => $d->id,
+                'name' => $d->name,
+                'city' => $d->city,
+                'cover_url' => $d->cover_url,
+                'is_featured' => $d->is_featured,
+            ]);
+
+        return \Inertia\Inertia::render('Admin/Destinations/Dashboard', [
+            'stats' => $stats,
+            'bookingStats' => $bookingStats,
+            'viewsChart' => $viewsChart,
+            'topDestinations' => $topDestinations,
+            'recentDestinations' => $recentDestinations,
+            'period' => $period,
+        ]);
     }
 
     public function index(Request $request)
@@ -56,7 +130,24 @@ class DestinationController extends Controller
     {
         $validated = $request->validate($this->validationRules());
 
-        $this->destinationService->createDestination($validated, $request);
+        $destination = $this->destinationService->createDestination($validated, $request);
+
+        $this->logCreate($destination, 'Destinasi', $destination->name);
+
+        // Send notifications to all users
+        if ($destination->is_active) {
+            $url = route('destinations.show', $destination->slug);
+            $this->notificationService->notifyNewDestination(
+                $destination->name,
+                $destination->short_description ?? $destination->description ?? '',
+                $url
+            );
+            $this->pushNotificationService->notifyNewDestination(
+                $destination->name,
+                $destination->short_description ?? $destination->description ?? '',
+                $url
+            );
+        }
 
         return redirect()->route('admin.destinations.index')
             ->with('success', 'Destinasi berhasil ditambahkan.');
@@ -73,7 +164,14 @@ class DestinationController extends Controller
     {
         $validated = $request->validate($this->validationRules());
 
+        $oldValues = $destination->only(['name', 'description', 'address', 'is_active', 'is_featured']);
+
         $this->destinationService->updateDestination($destination, $validated, $request);
+
+        $destination->refresh();
+        $newValues = $destination->only(['name', 'description', 'address', 'is_active', 'is_featured']);
+
+        $this->logUpdate($destination, 'Destinasi', $oldValues, $newValues, $destination->name);
 
         return redirect()->route('admin.destinations.index')
             ->with('success', 'Destinasi berhasil diperbarui.');
@@ -81,6 +179,9 @@ class DestinationController extends Controller
 
     public function destroy(Destination $destination)
     {
+        $name = $destination->name;
+        $this->logDelete($destination, 'Destinasi', $name);
+
         $destination->delete();
 
         return redirect()->route('admin.destinations.index')
@@ -103,7 +204,10 @@ class DestinationController extends Controller
 
     public function toggleActive(Destination $destination)
     {
+        $oldStatus = $destination->is_active;
         $destination->update(['is_active' => !$destination->is_active]);
+
+        $this->logToggle($destination, 'Destinasi', 'is_active', $destination->is_active, $destination->name);
 
         return response()->json([
             'success' => true,
@@ -116,6 +220,8 @@ class DestinationController extends Controller
     {
         $destination->update(['is_featured' => !$destination->is_featured]);
 
+        $this->logToggle($destination, 'Destinasi (Unggulan)', 'is_featured', $destination->is_featured, $destination->name);
+
         return response()->json([
             'success' => true,
             'is_featured' => $destination->is_featured,
@@ -126,6 +232,8 @@ class DestinationController extends Controller
     public function duplicate(Destination $destination)
     {
         $newDestination = $this->destinationService->duplicateDestination($destination);
+
+        $this->logCreate($newDestination, 'Destinasi (Duplikat)', $newDestination->name);
 
         return response()->json([
             'success' => true,
@@ -143,6 +251,8 @@ class DestinationController extends Controller
 
         $count = count($request->ids);
         Destination::whereIn('id', $request->ids)->delete();
+
+        $this->logBulk('delete', 'Destinasi', $count);
 
         return response()->json([
             'success' => true,

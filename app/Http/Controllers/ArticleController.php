@@ -15,6 +15,7 @@ class ArticleController extends Controller
         // Exclude 'berita' (news) category from blog - news has its own page
         $query = Article::published()
             ->where('category', '!=', 'berita')
+            ->orderByDesc('is_pinned') // Pinned articles first
             ->latest('published_at');
 
         // Filter by category
@@ -39,7 +40,7 @@ class ArticleController extends Controller
             ->where('category', '!=', 'berita')
             ->featured()
             ->latest('published_at')
-            ->take(3)
+            ->take(10)
             ->get();
 
         // Categories for filter (exclude 'berita' - it has its own page)
@@ -50,14 +51,22 @@ class ArticleController extends Controller
             ->where('category', '!=', 'berita')
             ->latest('published_at')
             ->take(5)
-            ->get(['id', 'title', 'slug', 'featured_image', 'published_at']);
+            ->get(['id', 'title', 'slug', 'featured_image', 'image_data', 'image_mime', 'published_at', 'updated_at']);
 
         $filters = [
             'search' => $request->search,
             'category' => $request->category,
         ];
 
-        return \Inertia\Inertia::render('Public/Blog/Index', compact('articles', 'featuredArticles', 'categories', 'recentArticles', 'filters'));
+        // Calculate stats for the hero section
+        $stats = [
+            'totalViews' => Article::published()->where('category', '!=', 'berita')->sum('views_count'),
+            'totalComments' => \App\Models\ArticleComment::whereHas('article', function ($q) {
+                $q->published()->where('category', '!=', 'berita');
+            })->count(),
+        ];
+
+        return \Inertia\Inertia::render('Public/Blog/Index', compact('articles', 'featuredArticles', 'categories', 'recentArticles', 'filters', 'stats'));
     }
 
     /**
@@ -65,7 +74,10 @@ class ArticleController extends Controller
      */
     public function show($slug)
     {
-        $article = Article::published()->where('slug', $slug)->firstOrFail();
+        $article = Article::published()
+            ->with(['tags'])
+            ->where('slug', $slug)
+            ->firstOrFail();
         $article->incrementViews();
 
         // Related articles (same category)
@@ -87,7 +99,31 @@ class ArticleController extends Controller
             $relatedArticles = $relatedArticles->merge($moreArticles);
         }
 
-        return \Inertia\Inertia::render('Public/Blog/Show', compact('article', 'relatedArticles'));
+        // Comments (visible, root level, pinned first)
+        $comments = \App\Models\ArticleComment::with(['user', 'admin', 'replies.user', 'replies.admin'])
+            ->where('article_id', $article->id)
+            ->root()
+            ->visible()
+            ->orderByDesc('is_pinned')
+            ->latest()
+            ->take(50)
+            ->get()
+            ->map(fn($c) => [
+                'id' => $c->id,
+                'content' => $c->content,
+                'created_at' => $c->created_at,
+                'is_pinned' => $c->is_pinned,
+                'user' => $c->user ? ['id' => $c->user->id, 'name' => $c->user->name] : null,
+                'admin' => $c->admin ? ['name' => $c->admin->name] : null,
+                'replies' => $c->replies->filter(fn($r) => $r->is_visible)->map(fn($r) => [
+                    'id' => $r->id,
+                    'content' => $r->content,
+                    'created_at' => $r->created_at,
+                    'user' => $r->user ? ['id' => $r->user->id, 'name' => $r->user->name] : null,
+                    'admin' => $r->admin ? ['name' => $r->admin->name] : null,
+                ])->values(),
+            ]);
+
+        return \Inertia\Inertia::render('Public/Blog/Show', compact('article', 'relatedArticles', 'comments'));
     }
 }
-

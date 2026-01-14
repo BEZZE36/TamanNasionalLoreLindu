@@ -17,6 +17,7 @@ class DestinationComment extends Model
         'admin_id',
         'parent_id',
         'content',
+        'rating',
         'is_visible',
         'is_pinned',
     ];
@@ -26,6 +27,7 @@ class DestinationComment extends Model
         return [
             'is_visible' => 'boolean',
             'is_pinned' => 'boolean',
+            'rating' => 'integer',
         ];
     }
 

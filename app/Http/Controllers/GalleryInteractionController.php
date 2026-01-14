@@ -33,6 +33,27 @@ class GalleryInteractionController extends Controller
     }
 
     /**
+     * Toggle wishlist on a gallery.
+     */
+    public function toggleWishlist(Gallery $gallery)
+    {
+        $user = Auth::user();
+
+        if ($gallery->isWishlistedBy($user)) {
+            $gallery->wishlists()->detach($user->id);
+            $wishlisted = false;
+        } else {
+            $gallery->wishlists()->attach($user->id);
+            $wishlisted = true;
+        }
+
+        return response()->json([
+            'success' => true,
+            'wishlisted' => $wishlisted,
+        ]);
+    }
+
+    /**
      * Store a new comment on a gallery.
      */
     public function storeComment(Request $request, Gallery $gallery)

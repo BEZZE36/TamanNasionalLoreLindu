@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onUnmounted, onBeforeUnmount, watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { Menu, X, LogIn } from 'lucide-vue-next';
 import { gsap } from 'gsap';
@@ -26,6 +26,10 @@ import PageLoadingOverlay from '@/Components/Skeleton/PageLoadingOverlay.vue';
 // Import Block Detector for real-time block notification
 import BlockDetector from '@/Components/BlockDetector.vue';
 
+// Import Announcement components
+import AnnouncementBanner from '@/Components/AnnouncementBanner.vue';
+import AnnouncementModal from '@/Components/AnnouncementModal.vue';
+
 // Import Footer partials
 import FooterBrand from '@/Components/Footer/FooterBrand.vue';
 import FooterLinks from '@/Components/Footer/FooterLinks.vue';
@@ -34,11 +38,17 @@ import FooterMap from '@/Components/Footer/FooterMap.vue';
 import FooterNewsletter from '@/Components/Footer/FooterNewsletter.vue';
 import FooterCopyright from '@/Components/Footer/FooterCopyright.vue';
 
+// Import auto-logout composable
+import { useIdleTimeout } from '@/composables/useIdleTimeout';
+
 const page = usePage();
 
 // Get user and siteInfo from shared Inertia props
 const user = computed(() => page.props.auth?.user);
 const siteInfo = computed(() => page.props.siteInfo || {});
+
+// Initialize auto-logout only for authenticated users (isAdmin = false for user accounts)
+useIdleTimeout(!!user.value, false);
 
 // Mobile menu state
 const mobileMenuOpen = ref(false);
@@ -150,6 +160,12 @@ const closeMobileMenu = () => {
         
         <!-- Block Detector - checks if user has been blocked -->
         <BlockDetector />
+        
+        <!-- Announcement Banner (top/bottom bar) -->
+        <AnnouncementBanner />
+        
+        <!-- Announcement Modal (fullscreen popup) -->
+        <AnnouncementModal />
         
         <!-- Navbar -->
         <nav 

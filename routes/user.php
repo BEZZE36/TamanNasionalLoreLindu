@@ -52,7 +52,17 @@ Route::middleware('auth')->group(function () {
 
     // My Bookings
     Route::get('/my-bookings', function () {
-        $bookings = auth()->user()->bookings()
+        $user = auth()->user();
+        $midtransService = app(\App\Services\MidtransService::class);
+        $bookingService = app(\App\Services\BookingService::class);
+
+        // Auto-heal pending bookings (sync with Midtrans) before loading list
+        $user->bookings()->where('status', 'pending')->each(function ($booking) use ($bookingService, $midtransService) {
+            $bookingService->autoHealBooking($booking, $midtransService);
+        });
+
+        // Get fresh data after auto-heal
+        $bookings = $user->bookings()
             ->with(['destination.images', 'payment'])
             ->latest()
             ->paginate(10);
@@ -62,6 +72,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/my-reviews', [\App\Http\Controllers\User\UserReviewController::class, 'index'])->name('user.reviews');
     Route::get('/my-bookings/{orderNumber}', [BookingController::class, 'show'])->name('user.bookings.show');
     Route::get('/booking/{orderNumber}/ticket', [BookingController::class, 'downloadTicket'])->name('booking.ticket');
+    Route::get('/booking/{orderNumber}/invoice', [BookingController::class, 'downloadInvoice'])->name('booking.invoice');
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'show'])->name('user.profile');
@@ -90,12 +101,21 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{id}', [App\Http\Controllers\NotificationController::class, 'destroy'])->name('destroy');
     });
 
+    // Push Notification Subscription
+    Route::prefix('push')->name('push.')->group(function () {
+        Route::get('/vapid-public-key', [App\Http\Controllers\PushSubscriptionController::class, 'vapidPublicKey'])->name('vapid-public-key');
+        Route::post('/subscribe', [App\Http\Controllers\PushSubscriptionController::class, 'subscribe'])->name('subscribe');
+        Route::post('/unsubscribe', [App\Http\Controllers\PushSubscriptionController::class, 'unsubscribe'])->name('unsubscribe');
+        Route::get('/status', [App\Http\Controllers\PushSubscriptionController::class, 'status'])->name('status');
+    });
+
     // Wishlist
     Route::get('/wishlist', [App\Http\Controllers\WishlistController::class, 'index'])->name('wishlist.index');
     Route::post('/wishlist/{destination}', [App\Http\Controllers\WishlistController::class, 'toggle'])->name('wishlist.toggle');
 
-    // User Interactions (comments, likes)
+    // User Interactions (comments, likes, wishlists)
     Route::post('/gallery/{gallery}/like', [App\Http\Controllers\GalleryInteractionController::class, 'toggleLike'])->name('gallery.like');
+    Route::post('/gallery/{gallery}/wishlist', [App\Http\Controllers\GalleryInteractionController::class, 'toggleWishlist'])->name('gallery.wishlist');
     Route::post('/gallery/{gallery}/comment', [App\Http\Controllers\GalleryInteractionController::class, 'storeComment'])->name('gallery.comment');
     Route::delete('/gallery/comment/{comment}', [App\Http\Controllers\GalleryInteractionController::class, 'deleteComment'])->name('gallery.comment.delete');
 

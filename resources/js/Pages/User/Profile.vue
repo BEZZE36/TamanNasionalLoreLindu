@@ -7,9 +7,10 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { 
     User, Lock, Ticket, Calendar, Home, Save, CheckCircle, AlertCircle, 
     Edit, Mail, X, RefreshCw, Shield, ShieldOff, MapPin, CreditCard, ChevronRight,
-    Sparkles, TrendingUp, Star, Phone, Settings, Bell, Award, Clock,
+    Sparkles, TrendingUp, Star, Phone, Settings, Bell, BellRing, Award, Clock,
     Camera, AtSign, Hash, Globe, Eye, EyeOff, Copy, Check, Trash2, Upload
 } from 'lucide-vue-next';
+// PushNotificationToggle removed - push notifications are now always active
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -598,7 +599,7 @@ const canSubmitPassword = computed(() => {
             <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="hero-content flex flex-col items-center text-center">
                     <!-- Hidden file input -->
-                    <input type="file" ref="avatarInput" @change="handleAvatarChange" accept="image/*" class="hidden">
+                    <input type="file" ref="avatarInput" @change="handleAvatarChange" accept=".jpg,.jpeg,.png,.webp" class="hidden">
                     
                     <!-- Avatar with Glow Effect -->
                     <div class="relative group mb-5">
@@ -1166,6 +1167,8 @@ const canSubmitPassword = computed(() => {
                                 </div>
                             </div>
                         </Transition>
+
+
                     </div>
                 </div>
             </div>

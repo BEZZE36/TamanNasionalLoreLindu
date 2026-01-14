@@ -3,10 +3,13 @@
  * Login.vue - Premium Dark Theme Login Page
  * Modern design with GSAP animations, glassmorphism, and responsive layout
  */
-import { ref, onMounted, onBeforeUnmount } from 'vue';
-import { useForm, Link, Head } from '@inertiajs/vue3';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { useForm, Link, Head, usePage } from '@inertiajs/vue3';
 import { gsap } from 'gsap';
-import { Mail, Lock, LogIn, ArrowLeft, Eye, EyeOff, Sparkles } from 'lucide-vue-next';
+import { Mail, Lock, LogIn, ArrowLeft, Eye, EyeOff, Sparkles, AlertCircle } from 'lucide-vue-next';
+
+const page = usePage();
+const pageErrors = computed(() => page.props.errors || {});
 
 const form = useForm({
     email: '',
@@ -173,6 +176,14 @@ onBeforeUnmount(() => {
                             <div class="form-item text-center lg:text-left mb-6">
                                 <h1 class="text-xl sm:text-2xl font-black text-white mb-1">Selamat Datang! 👋</h1>
                                 <p class="text-gray-400 text-xs sm:text-sm">Masuk ke akun Anda untuk melanjutkan</p>
+                            </div>
+
+                            <!-- Error Banner (from redirects like Google OAuth) -->
+                            <div v-if="pageErrors.email" class="form-item mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                                <div class="flex items-start gap-2">
+                                    <AlertCircle class="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                    <p class="text-red-400 text-xs leading-relaxed">{{ pageErrors.email }}</p>
+                                </div>
                             </div>
 
                             <form @submit.prevent="submit" class="space-y-4">

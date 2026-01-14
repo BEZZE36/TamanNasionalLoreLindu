@@ -15,6 +15,11 @@ Route::get('/destinations/{slug}', [App\Http\Controllers\FrontDestinationControl
 Route::post('/destinations/{slug}/review', [App\Http\Controllers\FrontDestinationController::class, 'storeReview'])
     ->middleware('auth')
     ->name('destinations.review');
+Route::post('/destinations/{destination}/comments', [App\Http\Controllers\DestinationInteractionController::class, 'storeComment'])
+    ->middleware('auth')
+    ->name('destinations.comments.store');
+Route::get('/destinations/{destination}/comments', [App\Http\Controllers\DestinationInteractionController::class, 'getComments'])
+    ->name('destinations.comments.index');
 
 // Explore Map
 Route::get('/explore/map', [App\Http\Controllers\ExploreController::class, 'index'])->name('explore.map');
@@ -45,6 +50,16 @@ Route::get('/blog/{slug}', [App\Http\Controllers\ArticleController::class, 'show
 // News
 Route::get('/news', [App\Http\Controllers\NewsController::class, 'index'])->name('news');
 Route::get('/news/{slug}', [App\Http\Controllers\NewsController::class, 'show'])->name('news.show');
+
+// Article Interactions (Public)
+Route::post('/articles/{article}/track-view', [App\Http\Controllers\ArticleViewController::class, 'track'])->name('articles.track-view');
+Route::post('/articles/views/{view}/time-spent', [App\Http\Controllers\ArticleViewController::class, 'trackTimeSpent'])->name('articles.track-time');
+Route::post('/articles/{article}/toggle-like', [App\Http\Controllers\ArticleInteractionController::class, 'toggleLike'])->name('articles.toggle-like');
+Route::post('/articles/{article}/toggle-favorite', [App\Http\Controllers\ArticleInteractionController::class, 'toggleFavorite'])->name('articles.toggle-favorite');
+Route::get('/articles/{article}/interaction-status', [App\Http\Controllers\ArticleInteractionController::class, 'status'])->name('articles.interaction-status');
+Route::post('/articles/{article}/comments', [App\Http\Controllers\ArticleCommentController::class, 'store'])->middleware('auth')->name('articles.comments.store');
+Route::get('/my-favorites', [App\Http\Controllers\ArticleInteractionController::class, 'favorites'])->middleware('auth')->name('articles.my-favorites');
+Route::get('/my-likes', [App\Http\Controllers\ArticleInteractionController::class, 'likes'])->middleware('auth')->name('articles.my-likes');
 
 // Contact & FAQ
 Route::get('/contact', [App\Http\Controllers\PageController::class, 'contact'])->name('contact');

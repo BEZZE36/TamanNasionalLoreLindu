@@ -31,13 +31,28 @@ const contentRef = ref(null);
 const counters = ref({ total: 0, active: 0, pending: 0 });
 let ctx;
 
+// Normalize legacy statuses to new 4 statuses
+const normalizeStatus = (status) => {
+    const mapping = {
+        'pending': 'pending',
+        'awaiting_cash': 'pending',
+        'paid': 'confirmed',
+        'confirmed': 'confirmed',
+        'used': 'used',
+        'cancelled': 'cancelled',
+        'expired': 'cancelled',
+        'refunded': 'cancelled'
+    };
+    return mapping[status] || status;
+};
+
 // Computed stats
 const stats = computed(() => {
     const data = props.bookings?.data || [];
     return {
         total: data.length,
-        active: data.filter(b => b.status === 'paid' || b.status === 'confirmed').length,
-        pending: data.filter(b => b.status === 'pending').length
+        active: data.filter(b => ['confirmed', 'paid'].includes(b.status)).length,
+        pending: data.filter(b => ['pending', 'awaiting_cash'].includes(b.status)).length
     };
 });
 
@@ -46,12 +61,8 @@ const scrollToContent = () => {
 };
 
 const getStatusConfig = (status) => {
+    const normalizedStat = normalizeStatus(status);
     const configs = {
-        paid: { 
-            class: 'bg-emerald-100 text-emerald-700 border-emerald-200', 
-            icon: CheckCircle,
-            gradient: 'from-emerald-500 to-teal-500'
-        },
         confirmed: { 
             class: 'bg-emerald-100 text-emerald-700 border-emerald-200', 
             icon: CheckCircle,
@@ -67,18 +78,13 @@ const getStatusConfig = (status) => {
             icon: XCircle,
             gradient: 'from-red-500 to-rose-500'
         },
-        expired: { 
-            class: 'bg-red-100 text-red-700 border-red-200', 
-            icon: XCircle,
-            gradient: 'from-red-500 to-rose-500'
-        },
         used: { 
             class: 'bg-blue-100 text-blue-700 border-blue-200', 
             icon: CheckCircle,
             gradient: 'from-blue-500 to-indigo-500'
         }
     };
-    return configs[status] || { 
+    return configs[normalizedStat] || { 
         class: 'bg-gray-100 text-gray-700 border-gray-200', 
         icon: AlertCircle,
         gradient: 'from-gray-500 to-slate-500'

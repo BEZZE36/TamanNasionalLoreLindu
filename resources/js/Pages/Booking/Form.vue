@@ -30,7 +30,7 @@ let ctx;
 
 // Form state
 const form = useForm({
-    visit_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    visit_date: new Date().toISOString().split('T')[0],
     leader_name: user.value?.name || '',
     leader_phone: user.value?.phone || '',
     leader_email: user.value?.email || '',
@@ -402,12 +402,12 @@ onBeforeUnmount(() => {
                                 Tanggal Kunjungan
                             </h2>
                             <input type="date" v-model="form.visit_date" 
-                                :min="new Date(Date.now() + 86400000).toISOString().split('T')[0]"
+                                :min="new Date().toISOString().split('T')[0]"
                                 class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm sm:text-base bg-gray-50 hover:bg-white"
                                 :class="{ 'border-red-500 ring-2 ring-red-200': form.errors.visit_date }" required>
                             <p class="text-[10px] sm:text-xs text-gray-500 mt-2 flex items-center gap-1">
                                 <AlertCircle class="w-3 h-3" />
-                                Pilih minimal H+1 dari hari ini
+                                Pilih tanggal kunjungan mulai dari hari ini
                             </p>
                         </div>
 
@@ -591,7 +591,7 @@ onBeforeUnmount(() => {
                                 </p>
 
                                 <!-- Available Coupons -->
-                                <div v-if="coupons?.length > 0 && !isCouponApplied" class="mt-3 pt-3 border-t border-gray-100">
+                                <div v-if="coupons?.length > 0 && !isCouponApplied" class="mt-3 pt-3 border-t border-gray-100"> 
                                     <h4 class="text-[10px] sm:text-xs font-semibold text-gray-900 mb-2 flex items-center gap-1.5">
                                         <Tag class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-pink-500" />
                                         Voucher Tersedia
@@ -609,7 +609,7 @@ onBeforeUnmount(() => {
                                             </span>
                                         </div>
                                     </div>
-                                </div>
+                                 </div> 
                             </div>
 
                             <!-- Total -->

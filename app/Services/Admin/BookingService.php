@@ -89,7 +89,7 @@ class BookingService
             'service_fee' => $pricing['service_fee'],
             'total_amount' => $pricing['total_amount'],
             'status' => $validated['status'],
-            'confirmed_at' => in_array($validated['status'], ['confirmed', 'paid']) ? now() : null,
+            'confirmed_at' => $validated['status'] === 'confirmed' ? now() : null,
         ]);
 
         // Create booking items
@@ -103,10 +103,11 @@ class BookingService
     /**
      * Process payment and tickets for a booking
      */
-    public function processPaymentAndTickets(Booking $booking, string $paymentType = 'manual_admin'): void
+    public function processPaymentAndTickets(Booking $booking, string $paymentType = 'cash'): void
     {
         // Create payment record
         $booking->payments()->create([
+            'order_id' => $booking->order_number,
             'payment_type' => $paymentType,
             'gross_amount' => $booking->total_amount,
             'status' => 'success',
@@ -126,11 +127,20 @@ class BookingService
     public function sendConfirmationEmail(Booking $booking): bool
     {
         try {
+            Log::info('Starting to send confirmation email for booking: ' . $booking->order_number);
+
+            $booking->load(['destination', 'tickets']);
             $pdfContent = Pdf::loadView('pdf.ticket', compact('booking'))->output();
-            $this->mailService->sendBookingConfirmation($booking, $pdfContent);
-            return true;
+
+            Log::info('PDF generated successfully for booking: ' . $booking->order_number);
+
+            $result = $this->mailService->sendBookingConfirmation($booking, $pdfContent);
+
+            Log::info('Email send result for booking ' . $booking->order_number . ': ' . ($result ? 'success' : 'failed'));
+
+            return $result;
         } catch (\Exception $e) {
-            Log::warning('Failed to send booking confirmation email: ' . $e->getMessage());
+            Log::error('Failed to send booking confirmation email: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
             return false;
         }
     }
@@ -150,14 +160,14 @@ class BookingService
             'status' => $validated['status'],
         ]);
 
-        // Status changed to Paid/Confirmed from Pending
+        // Status changed to Confirmed from Pending
         if (
-            in_array($validated['status'], ['paid', 'confirmed']) &&
-            !in_array($oldStatus, ['paid', 'confirmed']) &&
+            $validated['status'] === 'confirmed' &&
+            $oldStatus !== 'confirmed' &&
             $booking->tickets->isEmpty()
         ) {
 
-            $this->processPaymentAndTickets($booking, 'manual_admin_update');
+            $this->processPaymentAndTickets($booking, 'cash');
         }
 
         // Update ticket validity if visit date changed

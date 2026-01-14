@@ -19,6 +19,9 @@ Route::middleware(['auth:admin', 'menu.access'])->group(function () {
     Route::post('/gallery/bulk-delete', [AdminGalleryController::class, 'bulkDelete'])->name('gallery.bulk-delete');
     Route::post('/gallery/reorder', [AdminGalleryController::class, 'reorder'])->name('gallery.reorder');
 
+    // Dashboard
+    Route::get('/gallery/dashboard', [AdminGalleryController::class, 'dashboard'])->name('gallery.dashboard');
+
     // Statistics & Export
     Route::get('/gallery/statistics', [\App\Http\Controllers\Admin\GalleryStatsController::class, 'index'])->name('gallery.stats');
     Route::get('/gallery/export/{format}', [\App\Http\Controllers\Admin\GalleryStatsController::class, 'export'])->name('gallery.export');

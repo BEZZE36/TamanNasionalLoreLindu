@@ -25,6 +25,9 @@ use Illuminate\Support\Facades\Route;
 // ============================================
 require __DIR__ . '/public.php';
 
+// Temporary test route for push notification
+require __DIR__ . '/test-push.php';
+
 // ============================================
 // AUTHENTICATION ROUTES
 // ============================================

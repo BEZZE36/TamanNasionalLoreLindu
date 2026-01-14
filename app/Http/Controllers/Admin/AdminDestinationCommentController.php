@@ -5,12 +5,24 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DestinationComment;
 use App\Models\Destination;
+use App\Services\NotificationService;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class AdminDestinationCommentController extends Controller
 {
+    protected NotificationService $notificationService;
+    protected PushNotificationService $pushNotificationService;
+
+    public function __construct(
+        NotificationService $notificationService,
+        PushNotificationService $pushNotificationService
+    ) {
+        $this->notificationService = $notificationService;
+        $this->pushNotificationService = $pushNotificationService;
+    }
     public function index(Request $request)
     {
         $query = DestinationComment::with(['user', 'admin', 'destination', 'replies.user', 'replies.admin'])
@@ -39,6 +51,7 @@ class AdminDestinationCommentController extends Controller
         $comments->getCollection()->transform(fn($c) => [
             'id' => $c->id,
             'content' => $c->content,
+            'rating' => $c->rating,
             'is_visible' => $c->is_visible,
             'is_pinned' => $c->is_pinned,
             'destination_id' => $c->destination_id,
@@ -69,15 +82,23 @@ class AdminDestinationCommentController extends Controller
             'destination_id' => 'required|exists:destinations,id',
             'content' => 'required|string|max:2000',
             'parent_id' => 'nullable|exists:destination_comments,id',
+            'rating' => 'nullable|integer|min:1|max:5',
         ]);
 
-        DestinationComment::create([
+        $data = [
             'admin_id' => Auth::guard('admin')->id(),
             'destination_id' => $request->input('destination_id'),
             'content' => $request->input('content'),
             'parent_id' => $request->input('parent_id'),
             'is_visible' => true,
-        ]);
+        ];
+
+        // Only include rating for main comments
+        if (!$request->input('parent_id') && $request->input('rating')) {
+            $data['rating'] = $request->input('rating');
+        }
+
+        DestinationComment::create($data);
 
         return response()->json([
             'success' => true,
@@ -102,10 +123,25 @@ class AdminDestinationCommentController extends Controller
             'is_visible' => true,
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Balasan berhasil ditambahkan'
-        ]);
+        // Send notification to original commenter and thread participants
+        $destination = $comment->destination;
+        if ($destination && $comment->user_id) {
+            $participantUserIds = DestinationComment::where('destination_id', $comment->destination_id)
+                ->where(function ($q) use ($comment) {
+                    $q->where('id', $comment->id)->orWhere('parent_id', $comment->id);
+                })
+                ->whereNotNull('user_id')
+                ->pluck('user_id')->unique()->toArray();
+
+            $url = route('destinations.show', $destination->slug);
+            $this->notificationService->notifyCommentReply($comment->user_id, $participantUserIds, 'Destinasi', $destination->name, $url);
+
+            foreach (array_unique(array_filter(array_merge([$comment->user_id], $participantUserIds))) as $userId) {
+                $this->pushNotificationService->notifyCommentReply($userId, 'Destinasi', $destination->name, $url);
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'Balasan berhasil ditambahkan']);
     }
 
     public function destroy(DestinationComment $comment)

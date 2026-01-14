@@ -351,6 +351,7 @@ class SiteInfoController extends Controller
         Setting::setSetting('operational_hours', json_encode($operationalHours), 'json');
 
         Setting::clearCache();
+        \Illuminate\Support\Facades\Cache::forget('site_info_shared');
 
         return back()->with('success', 'Detail Website berhasil diperbarui!');
     }

@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { 
     LayoutDashboard, MapPin, Leaf, Bird, Image, Megaphone, 
-    FileText, Newspaper, Settings, ChevronDown, Mail, Lock, ChevronRight
+    FileText, Newspaper, Settings, ChevronDown, Mail, Lock, ChevronRight, Quote
 } from 'lucide-vue-next';
 
 const emit = defineEmits(['navigate']);
@@ -27,6 +27,7 @@ const canAccessAnnouncements = computed(() => hasPermission('access-announcement
 const canAccessArticles = computed(() => hasPermission('access-articles'));
 const canAccessNews = computed(() => hasPermission('access-news'));
 const canAccessNewsletter = computed(() => hasPermission('access-newsletter'));
+const canAccessTestimonial = computed(() => hasPermission('access-testimonial') || isSuperAdmin.value);
 const canAccessSiteInfo = computed(() => hasPermission('access-site-info'));
 
 // Menu can open (read-* or write-* permission)
@@ -39,13 +40,14 @@ const canOpenAnnouncements = computed(() => hasPermission('read-announcements') 
 const canOpenArticles = computed(() => hasPermission('read-articles') || hasPermission('write-articles'));
 const canOpenNews = computed(() => hasPermission('read-news') || hasPermission('write-news'));
 const canOpenNewsletter = computed(() => hasPermission('read-newsletter') || hasPermission('write-newsletter'));
+const canOpenTestimonial = computed(() => hasPermission('read-testimonial') || hasPermission('write-testimonial') || isSuperAdmin.value);
 const canOpenSiteInfo = computed(() => hasPermission('read-site-info') || hasPermission('write-site-info'));
 
 // Show section if any menu is visible
 const showKontenSection = computed(() => {
     return canAccessDestinations.value || canAccessFlora.value || canAccessFauna.value || 
            canAccessGallery.value || canAccessAnnouncements.value || canAccessArticles.value || 
-           canAccessNews.value || canAccessNewsletter.value || canAccessSiteInfo.value;
+           canAccessNews.value || canAccessNewsletter.value || canAccessTestimonial.value || canAccessSiteInfo.value;
 });
 
 // Check if route is active
@@ -57,6 +59,8 @@ const expandedMenus = ref({
     flora: false,
     fauna: false,
     gallery: false,
+    articles: false,
+    news: false,
     siteInfo: false,
 });
 
@@ -65,6 +69,8 @@ if (isActive('/admin/destinations')) expandedMenus.value.destinations = true;
 if (isActive('/admin/flora')) expandedMenus.value.flora = true;
 if (isActive('/admin/fauna')) expandedMenus.value.fauna = true;
 if (isActive('/admin/gallery')) expandedMenus.value.gallery = true;
+if (isActive('/admin/articles')) expandedMenus.value.articles = true;
+if (isActive('/admin/news')) expandedMenus.value.news = true;
 if (isActive('/admin/site-info')) expandedMenus.value.siteInfo = true;
 
 const toggleMenu = (key) => {
@@ -74,20 +80,34 @@ const toggleMenu = (key) => {
 // Menu items
 const menuItems = {
     destinations: [
-        { name: 'Semua Destinasi', href: '/admin/destinations' },
-        { name: 'Tambah Baru', href: '/admin/destinations/create' },
+        { name: 'Dashboard', href: '/admin/destinations/dashboard' },
+        { name: 'Daftar Destinasi', href: '/admin/destinations' },
+        { name: 'Lihat Komentar', href: '/admin/destinations/comments' },
     ],
     flora: [
-        { name: 'Semua Flora', href: '/admin/flora' },
-        { name: 'Tambah Baru', href: '/admin/flora/create' },
+        { name: 'Dashboard', href: '/admin/flora/dashboard' },
+        { name: 'Daftar Flora', href: '/admin/flora' },
+        { name: 'Lihat Komentar', href: '/admin/flora/comments' },
     ],
     fauna: [
-        { name: 'Semua Fauna', href: '/admin/fauna' },
-        { name: 'Tambah Baru', href: '/admin/fauna/create' },
+        { name: 'Dashboard', href: '/admin/fauna/dashboard' },
+        { name: 'Daftar Fauna', href: '/admin/fauna' },
+        { name: 'Lihat Komentar', href: '/admin/fauna/comments' },
     ],
     gallery: [
-        { name: 'Semua Foto', href: '/admin/gallery' },
-        { name: 'Upload Baru', href: '/admin/gallery/create' },
+        { name: 'Dashboard', href: '/admin/gallery/dashboard' },
+        { name: 'Daftar Foto', href: '/admin/gallery' },
+        { name: 'Lihat Komentar', href: '/admin/gallery/comments' },
+    ],
+    articles: [
+        { name: 'Dashboard', href: '/admin/articles/dashboard' },
+        { name: 'Daftar Artikel', href: '/admin/articles' },
+        { name: 'Lihat Komentar', href: '/admin/articles/comments' },
+    ],
+    news: [
+        { name: 'Dashboard', href: '/admin/news/dashboard' },
+        { name: 'Daftar Berita', href: '/admin/news' },
+        { name: 'Lihat Komentar', href: '/admin/news/comments' },
     ],
     siteInfo: [
         { name: 'Detail Web', href: '/admin/site-info/detail-web' },
@@ -110,6 +130,7 @@ const iconColors = {
     articles: { gradient: 'from-indigo-500 to-violet-600', text: 'text-indigo-400', hover: 'group-hover:from-indigo-400 group-hover:to-violet-500' },
     news: { gradient: 'from-red-500 to-rose-600', text: 'text-red-400', hover: 'group-hover:from-red-400 group-hover:to-rose-500' },
     newsletter: { gradient: 'from-teal-500 to-cyan-600', text: 'text-teal-400', hover: 'group-hover:from-teal-400 group-hover:to-cyan-500' },
+    testimonial: { gradient: 'from-pink-500 to-fuchsia-600', text: 'text-pink-400', hover: 'group-hover:from-pink-400 group-hover:to-fuchsia-500' },
     siteinfo: { gradient: 'from-cyan-500 to-blue-600', text: 'text-cyan-400', hover: 'group-hover:from-cyan-400 group-hover:to-blue-500' },
 };
 </script>
@@ -288,45 +309,65 @@ const iconColors = {
         <ChevronRight v-else class="w-3 h-3 text-slate-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
     </Link>
 
-    <!-- ===== ARTICLES ===== -->
+    <!-- ===== ARTICLES DROPDOWN ===== -->
     <div v-if="canAccessArticles && !canOpenArticles" class="menu-locked group">
         <div class="icon-wrap icon-locked"><FileText class="w-4 h-4" /><div class="lock-badge"><Lock class="w-2 h-2" /></div></div>
         <span class="menu-label">Artikel</span>
         <Lock class="w-3 h-3 text-slate-600 ml-auto" />
     </div>
-    <Link v-else-if="canAccessArticles" href="/admin/articles" @click="handleNavigate"
-        :class="['menu-item group', isActive('/admin/articles') ? 'menu-active' : '']">
-        <div :class="['icon-wrap transition-all duration-300', 
-            isActive('/admin/articles') 
-                ? 'bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/30' 
-                : 'bg-slate-800/80 group-hover:bg-gradient-to-br group-hover:from-indigo-500/80 group-hover:to-violet-600/80']">
-            <FileText :class="['w-4 h-4 transition-all duration-300', 
-                isActive('/admin/articles') ? 'text-white' : 'text-indigo-400 group-hover:text-white']" />
-        </div>
-        <span class="menu-label">Artikel</span>
-        <div v-if="isActive('/admin/articles')" class="active-indicator"></div>
-        <ChevronRight v-else class="w-3 h-3 text-slate-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-    </Link>
+    <div v-else-if="canAccessArticles" class="relative">
+        <button @click="toggleMenu('articles')" 
+            :class="['menu-item group w-full', isActive('/admin/articles') ? 'menu-active' : '']">
+            <div :class="['icon-wrap transition-all duration-300', 
+                isActive('/admin/articles') 
+                    ? 'bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/30' 
+                    : 'bg-slate-800/80 group-hover:bg-gradient-to-br group-hover:from-indigo-500/80 group-hover:to-violet-600/80']">
+                <FileText :class="['w-4 h-4 transition-all duration-300', 
+                    isActive('/admin/articles') ? 'text-white' : 'text-indigo-400 group-hover:text-white']" />
+            </div>
+            <span class="menu-label flex-1 text-left">Artikel</span>
+            <ChevronDown :class="['w-3.5 h-3.5 text-slate-400 transition-all duration-300', expandedMenus.articles ? 'rotate-180 text-indigo-400' : '']" />
+        </button>
+        <Transition name="submenu">
+            <div v-if="expandedMenus.articles" class="submenu-container">
+                <Link v-for="item in menuItems.articles" :key="item.name" :href="item.href" @click="handleNavigate"
+                    :class="['submenu-item', isActive(item.href) ? 'submenu-active' : '']">
+                    <span class="submenu-dot"></span>
+                    <span>{{ item.name }}</span>
+                </Link>
+            </div>
+        </Transition>
+    </div>
 
-    <!-- ===== NEWS ===== -->
+    <!-- ===== NEWS DROPDOWN ===== -->
     <div v-if="canAccessNews && !canOpenNews" class="menu-locked group">
         <div class="icon-wrap icon-locked"><Newspaper class="w-4 h-4" /><div class="lock-badge"><Lock class="w-2 h-2" /></div></div>
         <span class="menu-label">Berita</span>
         <Lock class="w-3 h-3 text-slate-600 ml-auto" />
     </div>
-    <Link v-else-if="canAccessNews" href="/admin/news" @click="handleNavigate"
-        :class="['menu-item group', isActive('/admin/news') ? 'menu-active' : '']">
-        <div :class="['icon-wrap transition-all duration-300', 
-            isActive('/admin/news') 
-                ? 'bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/30' 
-                : 'bg-slate-800/80 group-hover:bg-gradient-to-br group-hover:from-red-500/80 group-hover:to-rose-600/80']">
-            <Newspaper :class="['w-4 h-4 transition-all duration-300', 
-                isActive('/admin/news') ? 'text-white' : 'text-red-400 group-hover:text-white']" />
-        </div>
-        <span class="menu-label">Berita</span>
-        <div v-if="isActive('/admin/news')" class="active-indicator"></div>
-        <ChevronRight v-else class="w-3 h-3 text-slate-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-    </Link>
+    <div v-else-if="canAccessNews" class="relative">
+        <button @click="toggleMenu('news')" 
+            :class="['menu-item group w-full', isActive('/admin/news') ? 'menu-active' : '']">
+            <div :class="['icon-wrap transition-all duration-300', 
+                isActive('/admin/news') 
+                    ? 'bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/30' 
+                    : 'bg-slate-800/80 group-hover:bg-gradient-to-br group-hover:from-red-500/80 group-hover:to-rose-600/80']">
+                <Newspaper :class="['w-4 h-4 transition-all duration-300', 
+                    isActive('/admin/news') ? 'text-white' : 'text-red-400 group-hover:text-white']" />
+            </div>
+            <span class="menu-label flex-1 text-left">Berita</span>
+            <ChevronDown :class="['w-3.5 h-3.5 text-slate-400 transition-all duration-300', expandedMenus.news ? 'rotate-180 text-red-400' : '']" />
+        </button>
+        <Transition name="submenu">
+            <div v-if="expandedMenus.news" class="submenu-container">
+                <Link v-for="item in menuItems.news" :key="item.name" :href="item.href" @click="handleNavigate"
+                    :class="['submenu-item', isActive(item.href) ? 'submenu-active' : '']">
+                    <span class="submenu-dot"></span>
+                    <span>{{ item.name }}</span>
+                </Link>
+            </div>
+        </Transition>
+    </div>
 
     <!-- ===== NEWSLETTER ===== -->
     <div v-if="canAccessNewsletter && !canOpenNewsletter" class="menu-locked group">
@@ -345,6 +386,26 @@ const iconColors = {
         </div>
         <span class="menu-label">Newsletter</span>
         <div v-if="isActive('/admin/newsletter')" class="active-indicator"></div>
+        <ChevronRight v-else class="w-3 h-3 text-slate-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+    </Link>
+
+    <!-- ===== TESTIMONIAL ===== -->
+    <div v-if="canAccessTestimonial && !canOpenTestimonial" class="menu-locked group">
+        <div class="icon-wrap icon-locked"><Quote class="w-4 h-4" /><div class="lock-badge"><Lock class="w-2 h-2" /></div></div>
+        <span class="menu-label">Testimonial</span>
+        <Lock class="w-3 h-3 text-slate-600 ml-auto" />
+    </div>
+    <Link v-else-if="canAccessTestimonial" href="/admin/testimonial" @click="handleNavigate"
+        :class="['menu-item group', isActive('/admin/testimonial') ? 'menu-active' : '']">
+        <div :class="['icon-wrap transition-all duration-300', 
+            isActive('/admin/testimonial') 
+                ? 'bg-gradient-to-br from-pink-500 to-fuchsia-600 shadow-lg shadow-pink-500/30' 
+                : 'bg-slate-800/80 group-hover:bg-gradient-to-br group-hover:from-pink-500/80 group-hover:to-fuchsia-600/80']">
+            <Quote :class="['w-4 h-4 transition-all duration-300', 
+                isActive('/admin/testimonial') ? 'text-white' : 'text-pink-400 group-hover:text-white']" />
+        </div>
+        <span class="menu-label">Testimonial</span>
+        <div v-if="isActive('/admin/testimonial')" class="active-indicator"></div>
         <ChevronRight v-else class="w-3 h-3 text-slate-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
     </Link>
 

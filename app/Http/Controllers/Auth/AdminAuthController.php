@@ -27,16 +27,22 @@ class AdminAuthController extends Controller
             'password' => ['required'],
         ]);
 
-        // Only allow active admins
-        $credentials['is_active'] = true;
-
+        // First, try to login without checking is_active
         if (Auth::guard('admin')->attempt($credentials, $request->remember)) {
             $request->session()->regenerate();
 
-            // Log Activity
+            $admin = Auth::guard('admin')->user();
+
+            // Check if admin is inactive
+            if (!$admin->is_active) {
+                // Redirect to blocked page
+                return redirect()->route('admin.account.blocked');
+            }
+
+            // Log Activity for active admins
             \App\Models\ActivityLog::log(
                 'login',
-                'Admin ' . Auth::guard('admin')->user()->name . ' login',
+                'Admin ' . $admin->name . ' login',
                 null
             );
 

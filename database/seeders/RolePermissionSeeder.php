@@ -64,53 +64,58 @@ class RolePermissionSeeder extends Seeder
             ['name' => 'Lihat Newsletter', 'slug' => 'read-newsletter', 'group' => 'newsletter', 'description' => 'Hanya bisa melihat data newsletter'],
             ['name' => 'Kelola Newsletter', 'slug' => 'write-newsletter', 'group' => 'newsletter', 'description' => 'Dapat mengelola newsletter dan kampanye'],
 
-            // 10. Edit Info
+            // 10. Testimonial
+            ['name' => 'Akses Testimonial', 'slug' => 'access-testimonial', 'group' => 'testimonial', 'description' => 'Menu Testimonial terlihat di sidebar'],
+            ['name' => 'Lihat Testimonial', 'slug' => 'read-testimonial', 'group' => 'testimonial', 'description' => 'Hanya bisa melihat data testimonial'],
+            ['name' => 'Kelola Testimonial', 'slug' => 'write-testimonial', 'group' => 'testimonial', 'description' => 'Dapat tambah, edit, hapus testimonial'],
+
+            // 11. Edit Info
             ['name' => 'Akses Edit Info', 'slug' => 'access-site-info', 'group' => 'site-info', 'description' => 'Menu Edit Info terlihat di sidebar'],
             ['name' => 'Lihat Site Info', 'slug' => 'read-site-info', 'group' => 'site-info', 'description' => 'Hanya bisa melihat info website'],
             ['name' => 'Kelola Site Info', 'slug' => 'write-site-info', 'group' => 'site-info', 'description' => 'Dapat mengubah info website, FAQ, dll'],
 
             // ============ MANAJEMEN ============
-            // 11. Pemesanan
+            // 12. Pemesanan
             ['name' => 'Akses Pemesanan', 'slug' => 'access-bookings', 'group' => 'bookings', 'description' => 'Menu Pemesanan terlihat di sidebar'],
             ['name' => 'Lihat Pemesanan', 'slug' => 'read-bookings', 'group' => 'bookings', 'description' => 'Hanya bisa melihat data pemesanan'],
             ['name' => 'Kelola Pemesanan', 'slug' => 'write-bookings', 'group' => 'bookings', 'description' => 'Dapat mengelola pemesanan'],
 
-            // 12. Kupon
+            // 13. Kupon
             ['name' => 'Akses Kupon', 'slug' => 'access-coupons', 'group' => 'coupons', 'description' => 'Menu Kupon terlihat di sidebar'],
             ['name' => 'Lihat Kupon', 'slug' => 'read-coupons', 'group' => 'coupons', 'description' => 'Hanya bisa melihat data kupon'],
             ['name' => 'Kelola Kupon', 'slug' => 'write-coupons', 'group' => 'coupons', 'description' => 'Dapat tambah, edit, hapus kupon'],
 
-            // 13. Pengguna
+            // 14. Pengguna
             ['name' => 'Akses Pengguna', 'slug' => 'access-users', 'group' => 'users', 'description' => 'Menu Pengguna terlihat di sidebar'],
             ['name' => 'Lihat Pengguna', 'slug' => 'read-users', 'group' => 'users', 'description' => 'Hanya bisa melihat data pengguna'],
             ['name' => 'Kelola Pengguna', 'slug' => 'write-users', 'group' => 'users', 'description' => 'Dapat mengelola pengguna'],
 
-            // 14. Scan Tiket
+            // 15. Scan Tiket
             ['name' => 'Akses Scan Tiket', 'slug' => 'access-tickets', 'group' => 'tickets', 'description' => 'Menu Scan Tiket terlihat di sidebar'],
             ['name' => 'Lihat Tiket', 'slug' => 'read-tickets', 'group' => 'tickets', 'description' => 'Hanya bisa melihat data tiket'],
             ['name' => 'Scan Tiket', 'slug' => 'scan-tickets', 'group' => 'tickets', 'description' => 'Dapat melakukan scan tiket'],
 
             // ============ LAPORAN ============
-            // 15. Activity Log
+            // 16. Activity Log
             ['name' => 'Akses Activity Log', 'slug' => 'access-activity-logs', 'group' => 'activity-logs', 'description' => 'Menu Activity Log terlihat di sidebar'],
             ['name' => 'Lihat Activity Log', 'slug' => 'read-activity-logs', 'group' => 'activity-logs', 'description' => 'Dapat melihat log aktivitas'],
 
-            // 16. Analytics
+            // 17. Analytics
             ['name' => 'Akses Analytics', 'slug' => 'access-analytics', 'group' => 'analytics', 'description' => 'Menu Analytics terlihat di sidebar'],
             ['name' => 'Lihat Analytics', 'slug' => 'read-analytics', 'group' => 'analytics', 'description' => 'Dapat melihat data analytics'],
 
             // ============ PENGATURAN ============
-            // 17. Kelola Admin
+            // 18. Kelola Admin
             ['name' => 'Akses Kelola Admin', 'slug' => 'access-admins', 'group' => 'admins', 'description' => 'Menu Kelola Admin terlihat di sidebar'],
             ['name' => 'Lihat Admin', 'slug' => 'read-admins', 'group' => 'admins', 'description' => 'Hanya bisa melihat data admin'],
             ['name' => 'Kelola Admin', 'slug' => 'write-admins', 'group' => 'admins', 'description' => 'Dapat tambah, edit, hapus admin'],
 
-            // 18. Role & Akses
+            // 19. Role & Akses
             ['name' => 'Akses Role & Akses', 'slug' => 'access-roles', 'group' => 'roles', 'description' => 'Menu Role & Akses terlihat di sidebar'],
             ['name' => 'Lihat Role', 'slug' => 'read-roles', 'group' => 'roles', 'description' => 'Hanya bisa melihat data role'],
             ['name' => 'Kelola Role', 'slug' => 'write-roles', 'group' => 'roles', 'description' => 'Dapat mengelola role dan permission'],
 
-            // 19. Database
+            // 20. Database
             ['name' => 'Akses Database', 'slug' => 'access-database', 'group' => 'database', 'description' => 'Menu Database terlihat di sidebar'],
             ['name' => 'Lihat Database', 'slug' => 'read-database', 'group' => 'database', 'description' => 'Dapat melihat info database'],
             ['name' => 'Kelola Database', 'slug' => 'write-database', 'group' => 'database', 'description' => 'Dapat backup, restore, import database'],
@@ -222,7 +227,7 @@ class RolePermissionSeeder extends Seeder
         }
 
         $this->command->info('✓ Roles and Permissions seeded successfully!');
-        $this->command->info('  - 19 Menu dengan 3 level permission (access/read/write)');
+        $this->command->info('  - 20 Menu dengan 3 level permission (access/read/write)');
         $this->command->info('  - Super Admin: Full admin panel access');
         $this->command->info('  - Admin: Limited admin panel access');
         $this->command->info('  - User: Full public website access');

@@ -5,12 +5,24 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\GalleryComment;
 use App\Models\Gallery;
+use App\Services\NotificationService;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class AdminGalleryCommentController extends Controller
 {
+    protected NotificationService $notificationService;
+    protected PushNotificationService $pushNotificationService;
+
+    public function __construct(
+        NotificationService $notificationService,
+        PushNotificationService $pushNotificationService
+    ) {
+        $this->notificationService = $notificationService;
+        $this->pushNotificationService = $pushNotificationService;
+    }
     public function index(Request $request)
     {
         $query = GalleryComment::with(['user', 'gallery', 'admin', 'replies.user', 'replies.admin'])
@@ -102,10 +114,25 @@ class AdminGalleryCommentController extends Controller
             'is_approved' => true,
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Balasan berhasil ditambahkan'
-        ]);
+        // Send notification to original commenter and thread participants
+        $gallery = $comment->gallery;
+        if ($gallery && $comment->user_id) {
+            $participantUserIds = GalleryComment::where('gallery_id', $comment->gallery_id)
+                ->where(function ($q) use ($comment) {
+                    $q->where('id', $comment->id)->orWhere('parent_id', $comment->id);
+                })
+                ->whereNotNull('user_id')
+                ->pluck('user_id')->unique()->toArray();
+
+            $url = route('gallery.show', $gallery->slug);
+            $this->notificationService->notifyCommentReply($comment->user_id, $participantUserIds, 'Galeri', $gallery->title, $url);
+
+            foreach (array_unique(array_filter(array_merge([$comment->user_id], $participantUserIds))) as $userId) {
+                $this->pushNotificationService->notifyCommentReply($userId, 'Galeri', $gallery->title, $url);
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'Balasan berhasil ditambahkan']);
     }
 
     public function destroy(GalleryComment $comment)

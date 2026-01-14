@@ -39,11 +39,12 @@ class GalleryController extends Controller
         $sort = $request->get('sort', 'newest');
         match ($sort) {
             'popular' => $query->popular(),
+            'most_liked' => $query->orderByDesc('likes_count'),
             'alphabetical' => $query->alphabetical(),
             default => $query->ordered(),
         };
 
-        $galleries = $query->paginate(16)->withQueryString();
+        $galleries = $query->withCount('likes')->paginate(16)->withQueryString();
         $categories = GalleryCategory::where('is_active', true)->orderBy('name')->get();
         $destinations = Destination::active()->orderBy('name')->get();
 
@@ -55,8 +56,18 @@ class GalleryController extends Controller
             'sort' => $request->sort ?? 'newest',
         ];
 
-        return \Inertia\Inertia::render('Public/Gallery/Index', compact('galleries', 'categories', 'destinations', 'filters'));
+        // Calculate stats for hero
+        $stats = [
+            'totalGalleries' => Gallery::active()->count(),
+            'totalPhotos' => Gallery::active()->where('type', 'image')->count(),
+            'totalVideos' => Gallery::active()->where('type', 'video')->count(),
+            'totalViews' => Gallery::active()->sum('view_count'),
+            'totalLikes' => \DB::table('gallery_likes')->count(),
+        ];
+
+        return \Inertia\Inertia::render('Public/Gallery/Index', compact('galleries', 'categories', 'destinations', 'filters', 'stats'));
     }
+
 
     /**
      * Display individual Gallery detail page
@@ -66,11 +77,25 @@ class GalleryController extends Controller
         $gallery = Gallery::where('slug', $slug)
             ->active()
             ->with(['destination', 'category', 'media'])
-            ->with(['comments' => fn($q) => $q->where('is_approved', true)->with('user')->orderBy('created_at', 'desc')])
             ->withCount('likes')
             ->firstOrFail();
 
         $gallery->incrementViewCount();
+
+        // Load comments with replies and admin support
+        $comments = $gallery->comments()
+            ->whereNull('parent_id')
+            ->where('is_approved', true)
+            ->with([
+                'user',
+                'admin',
+                'replies' => function ($q) {
+                    $q->where('is_approved', true)->with(['user', 'admin'])->orderBy('created_at', 'asc');
+                }
+            ])
+            ->orderByDesc('is_pinned')
+            ->orderByDesc('created_at')
+            ->get();
 
         $related = Gallery::active()
             ->where('id', '!=', $gallery->id)
@@ -85,8 +110,9 @@ class GalleryController extends Controller
             ->get();
 
         $isLiked = auth()->check() ? $gallery->isLikedBy(auth()->user()) : false;
+        $isWishlisted = auth()->check() ? $gallery->isWishlistedBy(auth()->user()) : false;
 
-        return \Inertia\Inertia::render('Public/Gallery/Show', compact('gallery', 'related', 'isLiked'));
+        return \Inertia\Inertia::render('Public/Gallery/Show', compact('gallery', 'related', 'isLiked', 'isWishlisted', 'comments'));
     }
 
     /**

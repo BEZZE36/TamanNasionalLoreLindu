@@ -17,6 +17,7 @@ Route::middleware(['auth:admin', 'menu.access'])->group(function () {
         Route::post('/headlines', [\App\Http\Controllers\Admin\AiController::class, 'headlines'])->name('headlines');
         Route::post('/expand', [\App\Http\Controllers\Admin\AiController::class, 'expand'])->name('expand');
         Route::post('/shorten', [\App\Http\Controllers\Admin\AiController::class, 'shorten'])->name('shorten');
+        Route::post('/translate', [\App\Http\Controllers\Admin\AiController::class, 'translate'])->name('translate');
         Route::post('/improve-grammar', [\App\Http\Controllers\Admin\AiController::class, 'improveGrammar'])->name('improve-grammar');
         Route::post('/generate-seo-tags', [\App\Http\Controllers\Admin\AiController::class, 'generateSeoTags'])->name('generate-seo-tags');
     });

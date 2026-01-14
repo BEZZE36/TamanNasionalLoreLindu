@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\Booking;
 use App\Services\TicketScanService;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class TicketScanController extends Controller
 {
+    use LogsActivity;
+
     public function __construct(
         protected TicketScanService $scanService
     ) {
@@ -50,6 +53,8 @@ class TicketScanController extends Controller
                 return $this->handleBookingFound($booking);
             }
 
+            $this->logScan(null, "Scan gagal - kode tidak ditemukan: {$code}");
+
             return response()->json([
                 'valid' => false,
                 'status' => 'not_found',
@@ -63,7 +68,10 @@ class TicketScanController extends Controller
 
     protected function handleBookingFound(Booking $booking)
     {
-        if (in_array($booking->status, [Booking::STATUS_PENDING, Booking::STATUS_AWAITING_CASH])) {
+        // Handle both pending and legacy awaiting_cash status for payment
+        if (in_array($booking->status, [Booking::STATUS_PENDING, 'awaiting_cash'])) {
+            $this->logScan($booking, "Scan booking menunggu pembayaran: {$booking->order_number}");
+
             return response()->json([
                 'valid' => false,
                 'status' => 'payment_required',
@@ -73,11 +81,24 @@ class TicketScanController extends Controller
             ]);
         }
 
+        // If booking is confirmed but has no tickets, auto-generate them
+        if ($booking->tickets->isEmpty() && in_array($booking->status, [Booking::STATUS_CONFIRMED, 'paid', 'confirmed'])) {
+            try {
+                app(\App\Services\TicketService::class)->generateTicketsForBooking($booking);
+                $booking->load('tickets');
+                $this->logScan($booking, "Auto-generated tickets for confirmed booking: {$booking->order_number}");
+            } catch (\Exception $e) {
+                $this->logScan($booking, "Failed to auto-generate tickets: {$e->getMessage()}");
+            }
+        }
+
         if ($booking->tickets->isNotEmpty()) {
             $ticket = $booking->tickets->first();
             $ticket->load(['booking', 'booking.destination', 'booking.payment']);
             return $this->handleTicketFound($ticket);
         }
+
+        $this->logScan($booking, "Scan booking valid tanpa tiket: {$booking->order_number}");
 
         return response()->json([
             'valid' => true,
@@ -98,6 +119,8 @@ class TicketScanController extends Controller
             $result['booking'] = $this->scanService->formatBookingDetail($booking);
         }
 
+        $this->logScan($ticket, "Scan tiket: {$ticket->ticket_code} - Status: {$result['status']}");
+
         return response()->json($result);
     }
 
@@ -108,8 +131,12 @@ class TicketScanController extends Controller
         $booking = Booking::with('tickets')->find($request->booking_id);
         $result = $this->scanService->processCashPayment($booking);
 
-        if ($result['success'] && isset($result['booking'])) {
-            $result['booking'] = $this->scanService->formatBookingDetail($result['booking']);
+        if ($result['success']) {
+            $this->logActivity('checkin', "Konfirmasi pembayaran tunai booking: {$booking->order_number} - Rp " . number_format($booking->total_amount, 0, ',', '.'), $booking);
+
+            if (isset($result['booking'])) {
+                $result['booking'] = $this->scanService->formatBookingDetail($result['booking']);
+            }
         }
 
         return response()->json($result, $result['success'] ? 200 : 500);
@@ -122,8 +149,12 @@ class TicketScanController extends Controller
         $ticket = Ticket::with('booking')->find($request->ticket_id);
         $result = $this->scanService->validateTicketEntry($ticket);
 
-        if ($result['success'] && isset($result['ticket'])) {
-            $result['ticket'] = $this->scanService->formatTicketDetail($result['ticket']);
+        if ($result['success']) {
+            $this->logCheckin($ticket, "Check-in tiket: {$ticket->ticket_code}");
+
+            if (isset($result['ticket'])) {
+                $result['ticket'] = $this->scanService->formatTicketDetail($result['ticket']);
+            }
         }
 
         return response()->json($result);

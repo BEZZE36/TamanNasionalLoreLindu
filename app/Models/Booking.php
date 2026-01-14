@@ -82,25 +82,17 @@ class Booking extends Model
         ];
     }
 
-    // Status constants
+    // Status constants (simplified to 4 statuses)
     public const STATUS_PENDING = 'pending';
-    public const STATUS_AWAITING_CASH = 'awaiting_cash';
-    public const STATUS_PAID = 'paid';
     public const STATUS_CONFIRMED = 'confirmed';
     public const STATUS_USED = 'used';
     public const STATUS_CANCELLED = 'cancelled';
-    public const STATUS_EXPIRED = 'expired';
-    public const STATUS_REFUNDED = 'refunded';
 
     public const STATUSES = [
         self::STATUS_PENDING => 'Menunggu Pembayaran',
-        self::STATUS_AWAITING_CASH => 'Menunggu Pembayaran Tunai',
-        self::STATUS_PAID => 'Sudah Dibayar',
-        self::STATUS_CONFIRMED => 'Dikonfirmasi',
+        self::STATUS_CONFIRMED => 'Terkonfirmasi',
         self::STATUS_USED => 'Sudah Digunakan',
         self::STATUS_CANCELLED => 'Dibatalkan',
-        self::STATUS_EXPIRED => 'Kedaluwarsa',
-        self::STATUS_REFUNDED => 'Dikembalikan',
     ];
 
     // Auto-generate order number
@@ -173,11 +165,9 @@ class Booking extends Model
     {
         return match ($this->status) {
             self::STATUS_PENDING => 'yellow',
-            self::STATUS_AWAITING_CASH => 'orange',
-            self::STATUS_PAID, self::STATUS_CONFIRMED => 'green',
+            self::STATUS_CONFIRMED => 'green',
             self::STATUS_USED => 'blue',
-            self::STATUS_CANCELLED, self::STATUS_EXPIRED => 'red',
-            self::STATUS_REFUNDED => 'purple',
+            self::STATUS_CANCELLED => 'red',
             default => 'gray',
         };
     }
@@ -215,7 +205,7 @@ class Booking extends Model
 
     public function isPaid(): bool
     {
-        return in_array($this->status, [self::STATUS_PAID, self::STATUS_CONFIRMED]);
+        return $this->status === self::STATUS_CONFIRMED;
     }
 
     public function isUsed(): bool
@@ -226,11 +216,6 @@ class Booking extends Model
     public function isCancelled(): bool
     {
         return $this->status === self::STATUS_CANCELLED;
-    }
-
-    public function isExpired(): bool
-    {
-        return $this->status === self::STATUS_EXPIRED;
     }
 
     public function canBeCancelled(): bool
@@ -246,13 +231,13 @@ class Booking extends Model
 
     public function scopePaid($query)
     {
-        return $query->whereIn('status', [self::STATUS_PAID, self::STATUS_CONFIRMED]);
+        return $query->where('status', self::STATUS_CONFIRMED);
     }
 
     public function scopeUpcoming($query)
     {
         return $query->where('visit_date', '>=', today())
-            ->whereIn('status', [self::STATUS_PAID, self::STATUS_CONFIRMED]);
+            ->where('status', self::STATUS_CONFIRMED);
     }
 
     public function scopeToday($query)

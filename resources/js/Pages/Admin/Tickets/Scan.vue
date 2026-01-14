@@ -1,7 +1,13 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+/**
+ * Scan.vue - Kasir & Scan Tiket Page
+ * Premium redesign matching Newsletter design system
+ * Modern, animated, responsive
+ */
+import { ref, onMounted, onUnmounted, onBeforeUnmount } from 'vue';
 import { usePage, Head } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import { gsap } from 'gsap';
 import ScanHeader from './Partials/ScanHeader.vue';
 import ScanScanner from './Partials/ScanScanner.vue';
 import ScanResultCards from './Partials/ScanResultCards.vue';
@@ -19,6 +25,7 @@ const props = defineProps({
 
 const page = usePage();
 const adminName = page.props.auth?.admin?.name || 'Admin';
+let ctx;
 
 // Scanner state
 const scanning = ref(false);
@@ -63,11 +70,21 @@ onMounted(async () => {
     }
     
     loadCameras();
+
+    // GSAP Animations
+    ctx = gsap.context(() => {
+        gsap.fromTo('.content-card', 
+            { opacity: 0, y: 20, scale: 0.98 }, 
+            { opacity: 1, y: 0, scale: 1, duration: 0.5, stagger: 0.1, ease: 'power3.out' }
+        );
+    });
 });
 
 onUnmounted(() => {
     stopScanner();
 });
+
+onBeforeUnmount(() => { if (ctx) ctx.revert(); });
 
 // Camera functions
 const loadCameras = async () => {
@@ -258,7 +275,7 @@ const quickSearch = (code) => {
 </script>
 
 <template>
-    <div class="min-h-screen">
+    <div class="min-h-screen space-y-5">
         <ScanHeader 
             :todayStats="todayStats"
             :dbConnected="dbConnected"
@@ -267,9 +284,9 @@ const quickSearch = (code) => {
         />
 
         <!-- Main Content Grid -->
-        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
             <!-- Left Column: Scanner -->
-            <div class="lg:col-span-2 space-y-6">
+            <div class="lg:col-span-2 space-y-5">
                 <ScanScanner
                     :scanning="scanning"
                     :loading="loading"
@@ -288,7 +305,7 @@ const quickSearch = (code) => {
             </div>
 
             <!-- Right Column: Result & Details -->
-            <div class="lg:col-span-3 space-y-6">
+            <div class="lg:col-span-3 space-y-5">
                 <ScanResultCards
                     :result="result"
                     :loading="loading"
@@ -305,11 +322,9 @@ const quickSearch = (code) => {
         </div>
 
         <!-- Transactions Table -->
-        <div class="max-w-7xl mx-auto">
-            <ScanTransactions
-                :transactions="recentTransactions"
-                :adminName="adminName"
-            />
-        </div>
+        <ScanTransactions
+            :transactions="recentTransactions"
+            :adminName="adminName"
+        />
     </div>
 </template>

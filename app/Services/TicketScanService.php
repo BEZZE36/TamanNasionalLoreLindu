@@ -27,18 +27,38 @@ class TicketScanService
                 ->where('status', 'success')
                 ->whereDate('paid_at', today())
                 ->sum('gross_amount'),
+            // Tickets ready to be validated (valid tickets for today's visit date)
+            'unused' => Ticket::where('status', 'valid')
+                ->whereHas('booking', function ($q) {
+                    $q->whereDate('visit_date', today())
+                        ->whereIn('status', [Booking::STATUS_CONFIRMED, 'paid', 'confirmed']);
+                })
+                ->count(),
         ];
     }
 
     /**
      * Get recent transactions for today
+     * Includes: confirmed bookings, used tickets, and tickets ready to validate (visit date = today)
      */
-    public function getRecentTransactions(int $limit = 10)
+    public function getRecentTransactions(int $limit = 20)
     {
         return Booking::with(['payment', 'destination', 'tickets'])
             ->where(function ($q) {
+                // Bookings confirmed today
                 $q->whereDate('confirmed_at', today())
-                    ->orWhereDate('used_at', today());
+                    // OR bookings with tickets used today
+                    ->orWhereHas('tickets', function ($ticketQuery) {
+                    $ticketQuery->whereDate('used_at', today());
+                })
+                    // OR confirmed bookings with valid tickets for today (ready to validate)
+                    ->orWhere(function ($subQ) {
+                    $subQ->whereIn('status', [Booking::STATUS_CONFIRMED, 'paid'])
+                        ->whereDate('visit_date', today())
+                        ->whereHas('tickets', function ($ticketQuery) {
+                            $ticketQuery->where('status', Ticket::STATUS_VALID);
+                        });
+                });
             })
             ->latest('updated_at')
             ->take($limit)
@@ -80,8 +100,29 @@ class TicketScanService
      */
     public function processCashPayment(Booking $booking): array
     {
+        // Check if booking is already paid or has existing payment
         if ($booking->isPaid()) {
-            return ['success' => true, 'message' => 'Pembayaran sudah lunas sebelumnya.'];
+            return [
+                'success' => true,
+                'message' => 'Pembayaran sudah lunas sebelumnya.',
+                'booking' => $booking->fresh(['payment', 'destination', 'tickets']),
+            ];
+        }
+
+        // Check if payment record already exists for this order
+        $existingPayment = Payment::where('order_id', $booking->order_number)->first();
+        if ($existingPayment) {
+            // Update booking status if payment exists but booking not updated
+            $booking->update([
+                'status' => Booking::STATUS_CONFIRMED,
+                'confirmed_at' => now(),
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Pembayaran sudah tercatat sebelumnya.',
+                'booking' => $booking->fresh(['payment', 'destination', 'tickets']),
+            ];
         }
 
         DB::beginTransaction();
@@ -98,10 +139,19 @@ class TicketScanService
             ]);
 
             $booking->update([
-                'status' => Booking::STATUS_PAID,
+                'status' => Booking::STATUS_CONFIRMED,
                 'confirmed_at' => now(),
             ]);
 
+            // Generate tickets if not exists
+            if ($booking->tickets->isEmpty()) {
+                app(\App\Services\TicketService::class)->generateTicketsForBooking($booking);
+            }
+
+            // Reload tickets relationship to get freshly generated tickets
+            $booking->load('tickets');
+
+            // Update all tickets to valid status
             foreach ($booking->tickets as $ticket) {
                 $ticket->update(['status' => Ticket::STATUS_VALID]);
             }
@@ -111,7 +161,7 @@ class TicketScanService
             return [
                 'success' => true,
                 'message' => 'Pembayaran tunai berhasil dikonfirmasi!',
-                'booking' => $booking->fresh(['payment', 'destination']),
+                'booking' => $booking->fresh(['payment', 'destination', 'tickets']),
             ];
         } catch (\Exception $e) {
             DB::rollBack();
@@ -132,19 +182,26 @@ class TicketScanService
             return ['success' => false, 'message' => 'Tiket tidak dalam status valid.'];
         }
 
+        // Update ticket to used
         $ticket->update([
             'status' => 'used',
             'used_at' => now(),
             'validated_by' => Auth::guard('admin')->id(),
         ]);
 
-        if ($ticket->booking) {
-            $allUsed = $ticket->booking->tickets()->where('status', '!=', 'used')->count() === 0;
-            if ($allUsed) {
-                $ticket->booking->update([
-                    'status' => Booking::STATUS_USED,
-                    'used_at' => now(),
-                ]);
+        // Update booking status if all tickets are now used
+        $booking = Booking::find($ticket->booking_id);
+        if ($booking) {
+            // Count remaining valid (unused) tickets - reload from DB to get fresh data
+            $remainingValid = Ticket::where('booking_id', $booking->id)
+                ->where('status', '!=', 'used')
+                ->count();
+
+            // If all tickets are used, update booking to 'used' status
+            if ($remainingValid === 0 && in_array($booking->status, [Booking::STATUS_CONFIRMED, 'paid', 'confirmed'])) {
+                $booking->status = Booking::STATUS_USED;
+                $booking->used_at = now();
+                $booking->save();
             }
         }
 
@@ -162,7 +219,7 @@ class TicketScanService
     {
         $booking = $ticket->booking;
 
-        if ($booking && in_array($booking->status, [Booking::STATUS_PENDING, Booking::STATUS_AWAITING_CASH])) {
+        if ($booking && $booking->status === Booking::STATUS_PENDING) {
             return [
                 'valid' => false,
                 'status' => 'payment_required',

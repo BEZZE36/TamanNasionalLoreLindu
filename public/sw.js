@@ -1,23 +1,28 @@
 // Service Worker for TNLL Explore PWA
-const CACHE_NAME = 'tnll-cache-v1';
+const CACHE_NAME = 'tnll-cache-v3';
 const OFFLINE_URL = '/offline';
 
-// Assets to cache
+// Assets to cache (optional - won't fail if missing)
 const STATIC_ASSETS = [
     '/',
     '/offline',
-    '/css/app.css',
-    '/js/app.js',
-    '/images/logo.png',
     '/manifest.json'
 ];
 
-// Install event
+// Install event - cache assets individually to handle 404s gracefully
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
             console.log('Caching static assets');
-            return cache.addAll(STATIC_ASSETS);
+            // Cache each asset individually, skip any that fail
+            return Promise.allSettled(
+                STATIC_ASSETS.map(url =>
+                    cache.add(url).catch(err => {
+                        console.warn(`Failed to cache ${url}:`, err);
+                        return null;
+                    })
+                )
+            );
         })
     );
     self.skipWaiting();
@@ -53,14 +58,14 @@ self.addEventListener('fetch', (event) => {
             .then((response) => {
                 // Clone the response
                 const responseClone = response.clone();
-                
+
                 // Cache successful responses
                 if (response.status === 200) {
                     caches.open(CACHE_NAME).then((cache) => {
                         cache.put(event.request, responseClone);
                     });
                 }
-                
+
                 return response;
             })
             .catch(() => {
@@ -69,12 +74,12 @@ self.addEventListener('fetch', (event) => {
                     if (cachedResponse) {
                         return cachedResponse;
                     }
-                    
+
                     // If it's a navigation request, show offline page
                     if (event.request.mode === 'navigate') {
                         return caches.match(OFFLINE_URL);
                     }
-                    
+
                     // Return a simple offline response for other requests
                     return new Response('Offline', {
                         status: 503,
@@ -91,8 +96,8 @@ self.addEventListener('push', (event) => {
     const title = data.title ?? 'TNLL Explore';
     const options = {
         body: data.body ?? 'Ada pemberitahuan baru!',
-        icon: '/images/icons/icon-192x192.png',
-        badge: '/images/icons/icon-72x72.png',
+        icon: '/assets/logo.png',
+        badge: '/assets/logo.png',
         data: data.url ?? '/'
     };
 

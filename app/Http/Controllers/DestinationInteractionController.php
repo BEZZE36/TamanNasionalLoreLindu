@@ -14,21 +14,38 @@ class DestinationInteractionController extends Controller
      */
     public function storeComment(Request $request, Destination $destination)
     {
-        $request->validate([
+        $rules = [
             'content' => 'required|string|min:3|max:1000',
             'parent_id' => 'nullable|exists:destination_comments,id',
-        ], [
+        ];
+
+        // Rating only for main comments, not replies
+        if (!$request->input('parent_id')) {
+            $rules['rating'] = 'nullable|integer|min:1|max:5';
+        }
+
+        $request->validate($rules, [
             'content.required' => 'Komentar tidak boleh kosong.',
             'content.min' => 'Komentar minimal 3 karakter.',
             'content.max' => 'Komentar maksimal 1000 karakter.',
+            'rating.integer' => 'Rating harus berupa angka.',
+            'rating.min' => 'Rating minimal 1.',
+            'rating.max' => 'Rating maksimal 5.',
         ]);
 
-        $comment = $destination->comments()->create([
+        $commentData = [
             'user_id' => Auth::id(),
             'content' => $request->input('content'),
             'parent_id' => $request->input('parent_id'),
             'is_visible' => true,
-        ]);
+        ];
+
+        // Add rating only for main comments
+        if (!$request->input('parent_id') && $request->input('rating')) {
+            $commentData['rating'] = $request->input('rating');
+        }
+
+        $comment = $destination->comments()->create($commentData);
 
         $comment->load('user');
 
@@ -38,6 +55,7 @@ class DestinationInteractionController extends Controller
             'comment' => [
                 'id' => $comment->id,
                 'content' => $comment->content,
+                'rating' => $comment->rating,
                 'parent_id' => $comment->parent_id,
                 'created_at' => $comment->created_at->diffForHumans(),
                 'user' => [
@@ -84,6 +102,7 @@ class DestinationInteractionController extends Controller
         $data = [
             'id' => $comment->id,
             'content' => $comment->content,
+            'rating' => $comment->rating,
             'parent_id' => $comment->parent_id,
             'is_pinned' => $comment->is_pinned,
             'created_at' => $comment->created_at->diffForHumans(),

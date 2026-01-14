@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
 use App\Services\AnnouncementService;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class AnnouncementController extends Controller
 {
+    use LogsActivity;
+
     public function __construct(
         protected AnnouncementService $service
     ) {
@@ -71,7 +74,9 @@ class AnnouncementController extends Controller
             Announcement::where('type', $data['type'])->where('is_active', true)->update(['is_active' => false]);
         }
 
-        Announcement::create($data);
+        $announcement = Announcement::create($data);
+
+        $this->logCreate($announcement, 'Pengumuman', $announcement->title);
 
         return redirect()->route('admin.announcements.index')
             ->with('success', 'Pengumuman berhasil ditambahkan.');
@@ -102,6 +107,8 @@ class AnnouncementController extends Controller
     {
         $validated = $request->validate($this->service->getValidationRules());
 
+        $oldValues = $announcement->only(['title', 'message', 'type', 'is_active']);
+
         $data = $this->service->prepareData($validated, $request, $announcement);
 
         if ($imagePath = $this->service->handleImageUpload($request, $announcement)) {
@@ -115,12 +122,18 @@ class AnnouncementController extends Controller
 
         $announcement->update($data);
 
+        $newValues = $announcement->only(['title', 'message', 'type', 'is_active']);
+        $this->logUpdate($announcement, 'Pengumuman', $oldValues, $newValues, $announcement->title);
+
         return redirect()->route('admin.announcements.index')
             ->with('success', 'Pengumuman berhasil diperbarui.');
     }
 
     public function destroy(Announcement $announcement)
     {
+        $title = $announcement->title;
+        $this->logDelete($announcement, 'Pengumuman', $title);
+
         $announcement->delete();
         return redirect()->route('admin.announcements.index')->with('success', 'Pengumuman berhasil dihapus.');
     }
@@ -135,6 +148,8 @@ class AnnouncementController extends Controller
 
         $announcement->update(['is_active' => $newStatus]);
 
+        $this->logToggle($announcement, 'Pengumuman', 'is_active', $announcement->is_active, $announcement->title);
+
         return response()->json([
             'success' => true,
             'is_active' => $announcement->is_active,
@@ -146,12 +161,18 @@ class AnnouncementController extends Controller
     {
         $request->validate(['ids' => 'required|array', 'ids.*' => 'exists:announcements,id']);
         $count = Announcement::whereIn('id', $request->ids)->delete();
+
+        $this->logBulk('delete', 'Pengumuman', $count);
+
         return response()->json(['success' => true, 'message' => "{$count} pengumuman berhasil dihapus"]);
     }
 
     public function duplicate(Announcement $announcement)
     {
         $new = $this->service->duplicate($announcement);
+
+        $this->logCreate($new, 'Pengumuman (Duplikat)', $new->title);
+
         return redirect()->route('admin.announcements.edit', $new)->with('success', 'Pengumuman berhasil diduplikasi.');
     }
 
@@ -205,6 +226,8 @@ class AnnouncementController extends Controller
 
     public function export()
     {
+        $this->logExport('Pengumuman', 'JSON');
+
         return response()->json(Announcement::all())
             ->header('Content-Disposition', 'attachment; filename="announcements-export-' . date('Y-m-d') . '.json"');
     }

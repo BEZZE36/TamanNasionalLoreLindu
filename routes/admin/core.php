@@ -25,9 +25,25 @@ Route::middleware('guest:admin')->group(function () {
     Route::post('/login', [AdminAuthController::class, 'login']);
 });
 
-// Admin Authenticated Routes
-Route::middleware(['auth:admin', 'menu.access'])->group(function () {
+// Blocked Admin Page (requires auth but NOT blocked.admin check)
+Route::middleware('auth:admin')->group(function () {
+    Route::get('/account-blocked', function () {
+        return \Inertia\Inertia::render('Admin/Auth/BlockedAdmin');
+    })->name('account.blocked');
+
     Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
+
+    // API to check admin status
+    Route::get('/api/check-status', function () {
+        $admin = auth('admin')->user();
+        return response()->json([
+            'is_active' => $admin ? $admin->is_active : false
+        ]);
+    })->name('api.check-status');
+});
+
+// Admin Authenticated Routes (with blocked check)
+Route::middleware(['auth:admin', 'blocked.admin', 'menu.access'])->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/global-search', [\App\Http\Controllers\Admin\GlobalSearchController::class, 'search'])->name('global-search');
 
@@ -62,6 +78,7 @@ Route::middleware(['auth:admin', 'menu.access'])->group(function () {
     // Activity Logs
     Route::prefix('activity-logs')->name('activity-logs.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\ActivityLogController::class, 'index'])->name('index');
+        Route::get('/export', [\App\Http\Controllers\Admin\ActivityLogController::class, 'export'])->name('export');
         Route::get('/{activityLog}', [\App\Http\Controllers\Admin\ActivityLogController::class, 'show'])->name('show');
         Route::delete('/{activityLog}', [\App\Http\Controllers\Admin\ActivityLogController::class, 'destroy'])->name('destroy');
         Route::post('/clear', [\App\Http\Controllers\Admin\ActivityLogController::class, 'clear'])->name('clear');

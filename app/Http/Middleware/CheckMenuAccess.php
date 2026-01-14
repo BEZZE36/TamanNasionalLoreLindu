@@ -22,6 +22,7 @@ class CheckMenuAccess
         'articles' => '/admin/articles',
         'news' => '/admin/news',
         'newsletter' => '/admin/newsletter',
+        'testimonial' => '/admin/testimonial',
         'site-info' => '/admin/site-info',
         'bookings' => '/admin/bookings',
         'coupons' => '/admin/coupons',

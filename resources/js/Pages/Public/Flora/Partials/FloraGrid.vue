@@ -1,86 +1,156 @@
 <script setup>
+/**
+ * FloraGrid.vue - Premium Grid with GSAP Animations
+ * Design: Modern grid, scroll animations, premium pagination
+ */
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { Link } from '@inertiajs/vue3';
-import { Sparkles } from 'lucide-vue-next';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { Leaf, ChevronLeft, ChevronRight, TreePine } from 'lucide-vue-next';
 import FloraCard from './FloraCard.vue';
 
-defineProps({
-    flora: {
-        type: Object,
-        required: true
-    }
+gsap.registerPlugin(ScrollTrigger);
+
+const props = defineProps({ 
+    flora: { type: Object, required: true } 
+});
+
+const gridRef = ref(null);
+let ctx;
+
+onMounted(async () => {
+    await nextTick();
+    
+    if (!gridRef.value) return;
+    
+    ctx = gsap.context(() => {
+        gsap.fromTo('.flora-card',
+            { opacity: 0, y: 30, scale: 0.95 },
+            {
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                duration: 0.5,
+                stagger: 0.06,
+                ease: 'power2.out',
+                scrollTrigger: {
+                    trigger: gridRef.value,
+                    start: 'top 85%',
+                    end: 'bottom top',
+                    toggleActions: 'play reverse play reverse'
+                }
+            }
+        );
+    }, gridRef.value);
+});
+
+onBeforeUnmount(() => {
+    if (ctx) ctx.revert();
 });
 </script>
 
 <template>
-    <section class="py-12 md:py-16 bg-gradient-to-b from-gray-50 to-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <!-- Grid -->
-            <div v-if="flora.data?.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <section ref="gridRef" class="py-8 sm:py-12 md:py-16 bg-gradient-to-b from-white via-gray-50/50 to-white">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Section Header -->
+            <div class="flex items-center justify-between mb-6 sm:mb-8">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/25">
+                        <TreePine class="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white" />
+                    </div>
+                    <div>
+                        <h2 class="text-sm sm:text-base font-bold text-gray-900">Koleksi Flora</h2>
+                        <p class="text-[10px] sm:text-[11px] text-gray-500">{{ flora.total || 0 }} spesies ditemukan</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flora Grid -->
+            <div v-if="flora.data?.length > 0" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
                 <FloraCard 
-                    v-for="(item, index) in flora.data"
-                    :key="item.id"
-                    :flora="item"
-                    :index="index"
+                    v-for="(item, index) in flora.data" 
+                    :key="item.id" 
+                    :flora="item" 
+                    :index="index" 
                 />
             </div>
 
             <!-- Empty State -->
-            <div v-else class="text-center py-20">
-                <div class="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center">
-                    <Sparkles class="w-12 h-12 text-gray-400" />
+            <div v-else class="text-center py-16 sm:py-20">
+                <div class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-5 sm:mb-6 bg-gradient-to-br from-emerald-100 to-green-100 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/10">
+                    <Leaf class="w-10 h-10 sm:w-12 sm:h-12 text-emerald-400" />
                 </div>
-                <h3 class="text-2xl font-bold text-gray-900 mb-2">Flora Tidak Ditemukan</h3>
-                <p class="text-gray-500 mb-8">Coba ubah kata kunci pencarian atau filter</p>
-                <Link 
-                    href="/flora"
-                    class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all"
-                >
+                <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-2">Flora Tidak Ditemukan</h3>
+                <p class="text-gray-500 text-xs sm:text-sm mb-6 max-w-sm mx-auto">Coba ubah kata kunci pencarian atau filter untuk menemukan flora yang Anda cari.</p>
+                <Link href="/flora" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:-translate-y-0.5 transition-all">
+                    <Leaf class="w-4 h-4" />
                     Lihat Semua Flora
                 </Link>
             </div>
 
             <!-- Pagination -->
-            <div v-if="flora.data?.length > 0 && flora.last_page > 1" class="mt-12 flex justify-center">
-                <nav class="flex items-center gap-2">
+            <div v-if="flora.data?.length > 0 && flora.last_page > 1" class="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <p class="sm:hidden text-[11px] text-gray-500">
+                    Halaman {{ flora.current_page }} dari {{ flora.last_page }}
+                </p>
+                
+                <nav class="flex items-center gap-1.5 sm:gap-2">
                     <!-- Previous -->
                     <Link 
-                        v-if="flora.prev_page_url"
-                        :href="flora.prev_page_url"
-                        class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-green-50 hover:border-green-300 transition-all"
+                        v-if="flora.prev_page_url" 
+                        :href="flora.prev_page_url" 
+                        class="flex items-center gap-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-emerald-50 hover:border-emerald-300 transition-all text-[11px] sm:text-xs font-medium shadow-sm"
                     >
-                        Sebelumnya
+                        <ChevronLeft class="w-3.5 h-3.5" />
+                        <span class="hidden sm:inline">Sebelumnya</span>
                     </Link>
+                    <span v-else class="flex items-center gap-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-300 text-[11px] sm:text-xs font-medium cursor-not-allowed">
+                        <ChevronLeft class="w-3.5 h-3.5" />
+                        <span class="hidden sm:inline">Sebelumnya</span>
+                    </span>
 
                     <!-- Page Numbers -->
-                    <template v-for="page in flora.last_page" :key="page">
-                        <Link 
-                            v-if="Math.abs(page - flora.current_page) <= 2 || page === 1 || page === flora.last_page"
-                            :href="`/flora?page=${page}`"
-                            :class="[
-                                'w-10 h-10 rounded-xl flex items-center justify-center font-semibold transition-all',
-                                page === flora.current_page
-                                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/30'
-                                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-green-50 hover:border-green-300'
-                            ]"
-                        >
-                            {{ page }}
-                        </Link>
-                        <span 
-                            v-else-if="page === flora.current_page - 3 || page === flora.current_page + 3"
-                            class="px-2 text-gray-400"
-                        >
-                            ...
+                    <div class="hidden sm:flex items-center gap-1">
+                        <template v-for="page in flora.last_page" :key="page">
+                            <Link 
+                                v-if="Math.abs(page - flora.current_page) <= 2 || page === 1 || page === flora.last_page" 
+                                :href="`/flora?page=${page}`"
+                                :class="[
+                                    'w-9 h-9 rounded-xl flex items-center justify-center font-semibold text-xs transition-all',
+                                    page === flora.current_page 
+                                        ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30' 
+                                        : 'bg-white border border-gray-200 text-gray-700 hover:bg-emerald-50 hover:border-emerald-300'
+                                ]"
+                            >
+                                {{ page }}
+                            </Link>
+                            <span v-else-if="page === flora.current_page - 3 || page === flora.current_page + 3" class="px-1 text-gray-400 text-xs">...</span>
+                        </template>
+                    </div>
+
+                    <!-- Mobile Page Indicator -->
+                    <div class="sm:hidden flex items-center gap-1">
+                        <span class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold text-xs shadow-lg shadow-emerald-500/30">
+                            {{ flora.current_page }}
                         </span>
-                    </template>
+                        <span class="text-gray-400 text-xs">/</span>
+                        <span class="text-gray-500 text-xs font-medium">{{ flora.last_page }}</span>
+                    </div>
 
                     <!-- Next -->
                     <Link 
-                        v-if="flora.next_page_url"
-                        :href="flora.next_page_url"
-                        class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-green-50 hover:border-green-300 transition-all"
+                        v-if="flora.next_page_url" 
+                        :href="flora.next_page_url" 
+                        class="flex items-center gap-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-emerald-50 hover:border-emerald-300 transition-all text-[11px] sm:text-xs font-medium shadow-sm"
                     >
-                        Selanjutnya
+                        <span class="hidden sm:inline">Selanjutnya</span>
+                        <ChevronRight class="w-3.5 h-3.5" />
                     </Link>
+                    <span v-else class="flex items-center gap-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-300 text-[11px] sm:text-xs font-medium cursor-not-allowed">
+                        <span class="hidden sm:inline">Selanjutnya</span>
+                        <ChevronRight class="w-3.5 h-3.5" />
+                    </span>
                 </nav>
             </div>
         </div>

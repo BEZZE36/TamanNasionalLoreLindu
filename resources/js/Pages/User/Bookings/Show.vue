@@ -33,20 +33,31 @@ const isDownloadingPdf = ref(false);
 const copied = ref(false);
 let ctx;
 
+// Normalize legacy statuses to new 4 statuses
+const normalizeStatus = (status) => {
+    const mapping = {
+        'pending': 'pending',
+        'awaiting_cash': 'pending',
+        'paid': 'confirmed',
+        'confirmed': 'confirmed',
+        'used': 'used',
+        'cancelled': 'cancelled',
+        'expired': 'cancelled',
+        'refunded': 'cancelled'
+    };
+    return mapping[status] || status;
+};
+
+const normalizedStatus = computed(() => normalizeStatus(props.booking?.status));
+
 // Computed
 const statusConfig = computed(() => {
-    const status = props.booking?.status;
+    const status = normalizedStatus.value;
     const configs = {
-        paid: { 
-            class: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30', 
-            icon: CheckCircle,
-            label: 'Sudah Dibayar',
-            color: 'emerald'
-        },
         confirmed: { 
             class: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30', 
             icon: CheckCircle,
-            label: 'Dikonfirmasi',
+            label: 'Terkonfirmasi',
             color: 'emerald'
         },
         pending: { 
@@ -55,23 +66,11 @@ const statusConfig = computed(() => {
             label: 'Menunggu Pembayaran',
             color: 'amber'
         },
-        awaiting_cash: { 
-            class: 'bg-orange-500/20 text-orange-300 border-orange-400/30', 
-            icon: CreditCard,
-            label: 'Menunggu Tunai',
-            color: 'orange'
-        },
         cancelled: { 
             class: 'bg-red-500/20 text-red-300 border-red-400/30', 
             icon: XCircle,
             label: 'Dibatalkan',
             color: 'red'
-        },
-        expired: { 
-            class: 'bg-gray-500/20 text-gray-300 border-gray-400/30', 
-            icon: XCircle,
-            label: 'Kedaluwarsa',
-            color: 'gray'
         },
         used: { 
             class: 'bg-blue-500/20 text-blue-300 border-blue-400/30', 
@@ -83,12 +82,12 @@ const statusConfig = computed(() => {
     return configs[status] || { 
         class: 'bg-gray-500/20 text-gray-300 border-gray-400/30', 
         icon: AlertCircle,
-        label: status,
+        label: props.booking?.status,
         color: 'gray'
     };
 });
 
-const isPaid = computed(() => ['paid', 'confirmed'].includes(props.booking?.status));
+const isPaid = computed(() => ['confirmed', 'paid'].includes(props.booking?.status));
 
 // Functions
 const scrollToContent = () => {
@@ -98,17 +97,21 @@ const scrollToContent = () => {
 const downloadTicketPdf = async () => {
     isDownloadingPdf.value = true;
     try {
-        const { generateTicketPdf } = await import('@/Utils/pdfTicket.js');
-        await generateTicketPdf(props.booking);
+        // Use backend route for PDF generation - correct route is /booking/{order}/ticket
+        window.location.href = `/booking/${props.booking.order_number}/ticket`;
     } catch (error) {
-        console.error('Error generating PDF:', error);
-        alert('Gagal membuat PDF. Silakan coba lagi.');
+        console.error('Error downloading PDF:', error);
+        alert('Gagal mengunduh PDF. Silakan coba lagi.');
     } finally {
-        isDownloadingPdf.value = false;
+        setTimeout(() => {
+            isDownloadingPdf.value = false;
+        }, 2000);
     }
 };
 
-const printInvoice = () => window.print();
+const printInvoice = () => {
+    window.location.href = `/booking/${props.booking.order_number}/invoice`;
+};
 
 const copyOrderNumber = async () => {
     try {
@@ -327,6 +330,57 @@ onBeforeUnmount(() => { if (ctx) ctx.revert(); });
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                     <!-- Main Column -->
                     <div class="lg:col-span-2 space-y-4 sm:space-y-6">
+                        <!-- Cash Payment QR Code (if pending) -->
+                        <div v-if="normalizedStatus === 'pending'" 
+                             class="content-card bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl sm:rounded-3xl shadow-xl border-2 border-amber-200 p-4 sm:p-6 lg:p-8">
+                            <div class="flex items-center justify-between mb-4 sm:mb-6">
+                                <h3 class="text-sm sm:text-base lg:text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
+                                        <QrCode class="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                                    </div>
+                                    QR Code Pembayaran Tunai
+                                </h3>
+                                <span class="inline-flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-bold border border-amber-200">
+                                    <Clock class="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                    Menunggu Bayar
+                                </span>
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 bg-white rounded-xl sm:rounded-2xl border-2 border-amber-100 p-4 sm:p-6">
+                                <!-- QR Code for Order -->
+                                <div class="flex-shrink-0 bg-white p-3 sm:p-4 rounded-xl shadow-lg border border-gray-100">
+                                    <!-- Generate QR code from order_number -->
+                                    <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(booking.order_number)}`" 
+                                         :alt="`QR Code ${booking.order_number}`"
+                                         class="w-28 h-28 sm:w-32 sm:h-32 object-contain">
+                                    <p class="mt-2 text-center text-[10px] sm:text-xs font-mono font-bold text-amber-600 bg-amber-50 rounded-lg py-1">
+                                        {{ booking.order_number }}
+                                    </p>
+                                </div>
+
+                                <!-- Instructions -->
+                                <div class="flex-1 text-center sm:text-left space-y-2 sm:space-y-3">
+                                    <h4 class="text-base sm:text-lg lg:text-xl font-bold text-gray-900">{{ booking.destination?.name }}</h4>
+                                    <div class="space-y-1.5">
+                                        <p class="text-xs sm:text-sm text-gray-600 flex items-center justify-center sm:justify-start gap-1.5">
+                                            <CreditCard class="w-3.5 h-3.5 text-amber-500" />
+                                            Total: <span class="font-bold text-gray-900">{{ booking.formatted_total_amount }}</span>
+                                        </p>
+                                        <p class="text-xs sm:text-sm text-gray-600 flex items-center justify-center sm:justify-start gap-1.5">
+                                            <CalendarDays class="w-3.5 h-3.5 text-amber-500" />
+                                            Kunjungan: <span class="font-semibold text-gray-900">{{ formatDate(booking.visit_date) }}</span>
+                                        </p>
+                                    </div>
+                                    <div class="pt-2 sm:pt-3 border-t border-amber-100">
+                                        <p class="text-[10px] sm:text-xs text-amber-700 flex items-center justify-center sm:justify-start gap-1.5 bg-amber-50 rounded-lg px-3 py-2">
+                                            <AlertCircle class="w-3.5 h-3.5" />
+                                            Tunjukkan QR Code ini ke petugas kasir untuk pembayaran
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- E-Ticket Card (if paid) -->
                         <div v-if="isPaid && booking.tickets?.length > 0" 
                              class="content-card bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl sm:rounded-3xl shadow-xl border-2 border-emerald-100 p-4 sm:p-6 lg:p-8">
@@ -526,7 +580,11 @@ onBeforeUnmount(() => { if (ctx) ctx.revert(); });
                         <!-- Actions -->
                         <div class="content-card bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-gray-100 p-4 sm:p-5 space-y-2 sm:space-y-3">
                             <!-- Pending Actions -->
-                            <template v-if="booking.status === 'pending'">
+                            <template v-if="normalizedStatus === 'pending'">
+                                <Link :href="`/booking/${booking.order_number}/edit`" 
+                                      class="flex items-center justify-center gap-2 w-full px-4 py-2.5 sm:py-3 border-2 border-blue-200 text-blue-700 bg-blue-50 font-semibold text-xs sm:text-sm rounded-xl hover:bg-blue-100 hover:border-blue-300 transition-all mb-2">
+                                    ✏️ Edit Booking
+                                </Link>
                                 <Link :href="`/booking/${booking.order_number}/payment`" 
                                       class="flex items-center justify-center gap-2 w-full px-4 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all">
                                     <CreditCard class="w-4 h-4" />
@@ -534,22 +592,7 @@ onBeforeUnmount(() => { if (ctx) ctx.revert(); });
                                 </Link>
                             </template>
 
-                            <!-- Awaiting Cash Actions -->
-                            <template v-else-if="booking.status === 'awaiting_cash'">
-                                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4 mb-2">
-                                    <h4 class="font-semibold text-amber-800 text-[10px] sm:text-xs mb-1 flex items-center gap-1.5">
-                                        <Clock class="w-3.5 h-3.5" />
-                                        Menunggu Pembayaran Tunai
-                                    </h4>
-                                    <p class="text-amber-700 text-[9px] sm:text-[10px]">Bayar di loket kasir TNLL sebelum batas waktu.</p>
-                                </div>
-                                <Link :href="`/booking/${booking.order_number}/payment`" 
-                                      class="flex items-center justify-center gap-2 w-full px-4 py-2.5 sm:py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-lg hover:-translate-y-0.5 transition-all">
-                                    🔄 Ubah ke Bayar Online
-                                </Link>
-                            </template>
-
-                            <!-- Paid Actions -->
+                            <!-- Confirmed Actions -->
                             <template v-else-if="isPaid">
                                 <button disabled
                                         class="flex items-center justify-center gap-2 w-full px-4 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold text-xs sm:text-sm rounded-xl cursor-not-allowed">

@@ -128,6 +128,11 @@ class Gallery extends Model
         return $this->belongsToMany(User::class, 'gallery_likes')->withTimestamps();
     }
 
+    public function wishlists(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'gallery_wishlists')->withTimestamps();
+    }
+
     public function comments(): HasMany
     {
         return $this->hasMany(GalleryComment::class)->orderBy('created_at', 'desc');
@@ -146,7 +151,10 @@ class Gallery extends Model
 
     public function getTypeLabelAttribute(): string
     {
-        return self::TYPES[$this->type] ?? $this->type;
+        if ($this->type === null) {
+            return '';
+        }
+        return self::TYPES[$this->type] ?? $this->type ?? '';
     }
 
     public function getFormattedViewCountAttribute(): string
@@ -166,6 +174,11 @@ class Gallery extends Model
     public function isLikedBy(?User $user): bool
     {
         return $user ? $this->likes()->where('user_id', $user->id)->exists() : false;
+    }
+
+    public function isWishlistedBy(?User $user): bool
+    {
+        return $user ? $this->wishlists()->where('user_id', $user->id)->exists() : false;
     }
 
     public function isImage(): bool

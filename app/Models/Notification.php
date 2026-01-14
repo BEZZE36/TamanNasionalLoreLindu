@@ -30,7 +30,7 @@ class Notification extends Model
         ];
     }
 
-    // Notification types
+    // Notification types - Booking
     public const TYPE_BOOKING_CREATED = 'booking_created';
     public const TYPE_PAYMENT_SUCCESS = 'payment_success';
     public const TYPE_PAYMENT_PENDING = 'payment_pending';
@@ -39,6 +39,19 @@ class Notification extends Model
     public const TYPE_CASH_REMINDER = 'cash_reminder';
     public const TYPE_TICKET_VALIDATED = 'ticket_validated';
     public const TYPE_BOOKING_CANCELLED = 'booking_cancelled';
+
+    // Notification types - New Content
+    public const TYPE_NEW_DESTINATION = 'new_destination';
+    public const TYPE_NEW_FLORA = 'new_flora';
+    public const TYPE_NEW_FAUNA = 'new_fauna';
+    public const TYPE_NEW_ARTICLE = 'new_article';
+    public const TYPE_NEW_NEWS = 'new_news';
+    public const TYPE_NEW_GALLERY = 'new_gallery';
+
+    // Notification types - Comments
+    public const TYPE_COMMENT_REPLY = 'comment_reply';
+
+    // Notification types - General
     public const TYPE_GENERAL = 'general';
 
     // Color mappings for UI
@@ -51,6 +64,13 @@ class Notification extends Model
         self::TYPE_CASH_REMINDER => 'orange',
         self::TYPE_TICKET_VALIDATED => 'emerald',
         self::TYPE_BOOKING_CANCELLED => 'red',
+        self::TYPE_NEW_DESTINATION => 'teal',
+        self::TYPE_NEW_FLORA => 'green',
+        self::TYPE_NEW_FAUNA => 'amber',
+        self::TYPE_NEW_ARTICLE => 'indigo',
+        self::TYPE_NEW_NEWS => 'purple',
+        self::TYPE_NEW_GALLERY => 'pink',
+        self::TYPE_COMMENT_REPLY => 'cyan',
         self::TYPE_GENERAL => 'primary',
     ];
 
@@ -64,6 +84,13 @@ class Notification extends Model
         self::TYPE_CASH_REMINDER => '💵',
         self::TYPE_TICKET_VALIDATED => '🎉',
         self::TYPE_BOOKING_CANCELLED => '🚫',
+        self::TYPE_NEW_DESTINATION => '🗺️',
+        self::TYPE_NEW_FLORA => '🌿',
+        self::TYPE_NEW_FAUNA => '🦋',
+        self::TYPE_NEW_ARTICLE => '📰',
+        self::TYPE_NEW_NEWS => '🗞️',
+        self::TYPE_NEW_GALLERY => '🖼️',
+        self::TYPE_COMMENT_REPLY => '💬',
         self::TYPE_GENERAL => '🔔',
     ];
 
@@ -87,7 +114,7 @@ class Notification extends Model
     public function getColorClassAttribute(): string
     {
         $color = self::COLORS[$this->type] ?? 'primary';
-        return match($color) {
+        return match ($color) {
             'green' => 'bg-green-100 text-green-600 border-green-200',
             'red' => 'bg-red-100 text-red-600 border-red-200',
             'yellow' => 'bg-yellow-100 text-yellow-600 border-yellow-200',
@@ -95,6 +122,12 @@ class Notification extends Model
             'blue' => 'bg-blue-100 text-blue-600 border-blue-200',
             'emerald' => 'bg-emerald-100 text-emerald-600 border-emerald-200',
             'gray' => 'bg-gray-100 text-gray-600 border-gray-200',
+            'teal' => 'bg-teal-100 text-teal-600 border-teal-200',
+            'amber' => 'bg-amber-100 text-amber-600 border-amber-200',
+            'indigo' => 'bg-indigo-100 text-indigo-600 border-indigo-200',
+            'purple' => 'bg-purple-100 text-purple-600 border-purple-200',
+            'pink' => 'bg-pink-100 text-pink-600 border-pink-200',
+            'cyan' => 'bg-cyan-100 text-cyan-600 border-cyan-200',
             default => 'bg-primary-100 text-primary-600 border-primary-200',
         };
     }

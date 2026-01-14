@@ -40,6 +40,7 @@ class FeedbackController extends Controller
             ->through(fn($f) => [
                 'id' => $f->id,
                 'display_name' => $f->display_name,
+                'is_anonymous' => $f->is_anonymous,
                 'message' => $f->message,
                 'rating' => $f->rating,
                 'status' => $f->status,
@@ -53,9 +54,10 @@ class FeedbackController extends Controller
             'unread' => Feedback::unread()->count(),
             'total' => Feedback::notArchived()->count(),
             'published' => Feedback::published()->count(),
+            'avgRating' => Feedback::published()->withRating()->avg('rating') ?? 0,
         ];
 
-        return Inertia::render('Admin/Feedback/Index', [
+        return Inertia::render('Admin/Testimonial/Index', [
             'feedbacks' => $feedbacks,
             'stats' => $stats,
             'filters' => $request->only(['search', 'status', 'rating']),
@@ -67,7 +69,7 @@ class FeedbackController extends Controller
         $feedback->markAsRead();
         $feedback->load(['user', 'destination', 'replies.admin']);
 
-        return Inertia::render('Admin/Feedback/Show', [
+        return Inertia::render('Admin/Testimonial/Show', [
             'feedback' => [
                 'id' => $feedback->id,
                 'display_name' => $feedback->display_name,
@@ -110,7 +112,7 @@ class FeedbackController extends Controller
     public function create()
     {
         $destinations = \App\Models\Destination::select('id', 'name')->get();
-        return Inertia::render('Admin/Feedback/Create', ['destinations' => $destinations]);
+        return Inertia::render('Admin/Testimonial/Create', ['destinations' => $destinations]);
     }
 
     public function deleteReply(FeedbackReply $reply)
@@ -145,9 +147,19 @@ class FeedbackController extends Controller
             'is_published' => 'boolean',
         ]);
 
+        // Get destination name for subject if selected
+        $destination = $validated['destination_id']
+            ? \App\Models\Destination::find($validated['destination_id'])
+            : null;
+
+        $subject = $destination
+            ? 'Ulasan untuk ' . $destination->name
+            : 'Ulasan Manual dari Admin';
+
         Feedback::create([
             'display_name' => $validated['display_name'],
             'destination_id' => $validated['destination_id'],
+            'subject' => $subject,
             'message' => $validated['message'],
             'rating' => $validated['rating'],
             'status' => $validated['status'],
@@ -156,14 +168,14 @@ class FeedbackController extends Controller
             'is_anonymous' => true,
         ]);
 
-        return redirect()->route('admin.feedback.index')
-            ->with('success', 'Feedback berhasil ditambahkan manual.');
+        return redirect()->route('admin.testimonial.index')
+            ->with('success', 'Testimonial berhasil ditambahkan.');
     }
 
     public function edit(Feedback $feedback)
     {
         $destinations = \App\Models\Destination::select('id', 'name')->get();
-        return Inertia::render('Admin/Feedback/Edit', [
+        return Inertia::render('Admin/Testimonial/Edit', [
             'feedback' => [
                 'id' => $feedback->id,
                 'display_name' => $feedback->display_name,
@@ -197,8 +209,8 @@ class FeedbackController extends Controller
             'is_published' => $request->boolean('is_published'),
         ]);
 
-        return redirect()->route('admin.feedback.index')
-            ->with('success', 'Feedback berhasil diperbarui.');
+        return redirect()->route('admin.testimonial.index')
+            ->with('success', 'Testimonial berhasil diperbarui.');
     }
 
     public function updateStatus(Request $request, Feedback $feedback)
@@ -227,7 +239,7 @@ class FeedbackController extends Controller
     {
         $feedback->update(['status' => Feedback::STATUS_ARCHIVED]);
 
-        return redirect()->route('admin.feedback.index')
-            ->with('success', 'Feedback berhasil diarsipkan.');
+        return redirect()->route('admin.testimonial.index')
+            ->with('success', 'Testimonial berhasil diarsipkan.');
     }
 }

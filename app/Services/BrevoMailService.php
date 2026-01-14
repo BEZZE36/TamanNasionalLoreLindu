@@ -10,11 +10,15 @@ class BrevoMailService
 {
     protected $apiKey;
     protected $baseUrl = 'https://api.brevo.com/v3/smtp/email';
-    protected $sender = ['name' => 'TNLL Explore', 'email' => 'noreply@tnllexplore.com'];
+    protected $sender;
 
     public function __construct()
     {
         $this->apiKey = env('BREVO_API_KEY');
+        $this->sender = [
+            'name' => env('BREVO_SENDER_NAME', 'TNLL Explore'),
+            'email' => env('BREVO_SENDER_EMAIL', 'noreply@tnllexplore.com')
+        ];
     }
 
     /**
@@ -29,7 +33,7 @@ class BrevoMailService
 
         $visitDate = $booking->visit_date->translatedFormat('d F Y');
         $totalAmount = number_format($booking->total_amount, 0, ',', '.');
-        
+
         $htmlContent = "
             <html>
             <body>

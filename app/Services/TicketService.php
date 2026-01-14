@@ -97,27 +97,39 @@ class TicketService
 
         // 2. If not found, try finding by Booking Order Number
         if (!$ticket) {
-            $booking = Booking::with(['destination', 'user', 'ticket'])->where('order_number', $code)->first();
+            $booking = Booking::with(['destination', 'user', 'tickets'])->where('order_number', $code)->first();
 
             if ($booking) {
-                if ($booking->ticket) {
-                    $ticket = $booking->ticket;
+                // Check if booking has valid tickets
+                $validTicket = $booking->tickets->where('status', 'valid')->first();
+
+                if ($validTicket) {
+                    $ticket = $validTicket;
+                } elseif ($booking->tickets->isNotEmpty()) {
+                    // Booking has tickets but none are valid (all used, etc.)
+                    $ticket = $booking->tickets->first();
                 } else {
-                    // Booking exists but no ticket generated (e.g. Pending, Cancelled, Expired)
+                    // Booking exists but no tickets generated
+                    // If booking is confirmed/paid, auto-generate tickets
+                    if (in_array($booking->status, [Booking::STATUS_CONFIRMED, 'paid', 'confirmed'])) {
+                        // Auto-generate tickets for confirmed booking
+                        $ticket = $this->generateTicketsForBooking($booking);
+                        if ($ticket) {
+                            $booking->load('tickets');
+                            return $this->validateTicket($ticket);
+                        }
+                    }
+
                     $reason = match ($booking->status) {
-                        Booking::STATUS_PENDING => 'pending_payment',
-                        Booking::STATUS_AWAITING_CASH => 'awaiting_cash',
-                        Booking::STATUS_CANCELLED => 'cancelled',
-                        Booking::STATUS_EXPIRED => 'expired',
+                        Booking::STATUS_PENDING, 'awaiting_cash' => 'pending_payment',
+                        Booking::STATUS_CANCELLED, 'expired', 'refunded' => 'cancelled',
                         default => 'no_ticket'
                     };
 
                     $statusLabel = match ($booking->status) {
-                        Booking::STATUS_PENDING => 'Menunggu Pembayaran',
-                        Booking::STATUS_CANCELLED => 'Dibatalkan',
-                        Booking::STATUS_EXPIRED => 'Kedaluwarsa',
-                        Booking::STATUS_AWAITING_CASH => 'Menunggu Pembayaran Tunai',
-                        default => $booking->status
+                        Booking::STATUS_PENDING, 'awaiting_cash' => 'Menunggu Pembayaran',
+                        Booking::STATUS_CANCELLED, 'expired', 'refunded' => 'Dibatalkan',
+                        default => ucfirst($booking->status)
                     };
 
                     return [
@@ -207,13 +219,18 @@ class TicketService
             ];
         }
 
-        // Check if expired
+        // Check if expired (visit date has passed)
         if ($ticket->valid_date->isPast() && !$ticket->valid_date->isToday()) {
+            // Auto-cancel expired ticket if still marked as valid
+            if ($ticket->status === Ticket::STATUS_VALID) {
+                $ticket->update(['status' => Ticket::STATUS_CANCELLED]);
+            }
+
             return [
                 'valid' => false,
                 'reason' => 'expired',
                 'message' => 'Tiket sudah kedaluwarsa (berlaku: ' . $ticket->valid_date->format('d M Y') . ')',
-                'ticket' => $ticket,
+                'ticket' => $ticket->fresh(),
             ];
         }
 

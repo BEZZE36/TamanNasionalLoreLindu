@@ -53,7 +53,7 @@ const passwordsMatch = computed(() => {
 });
 
 const submit = () => {
-    form.post('/register', {
+    form.post('/register/send-otp', {
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
 };
@@ -342,7 +342,7 @@ const features = [
                                 <button type="submit" :disabled="form.processing"
                                     class="form-item w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0">
                                     <UserPlus class="w-4 h-4" />
-                                    {{ form.processing ? 'Memproses...' : 'Daftar Sekarang' }}
+                                    {{ form.processing ? 'Mengirim OTP...' : 'Daftar & Kirim OTP' }}
                                 </button>
                             </form>
 

@@ -14,14 +14,21 @@ const form = useForm({
 const desktopPreview = ref(null);
 const mobilePreview = ref(null);
 
+const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
 const onDesktopSelect = (e) => {
     const file = e.target.files[0];
-    if (file) { form.image = file; desktopPreview.value = URL.createObjectURL(file); }
+    if (file) { 
+        if (!allowedTypes.includes(file.type)) { alert('Format tidak didukung! Hanya JPG, PNG, dan WebP yang diizinkan.'); e.target.value = ''; return; }
+        form.image = file; desktopPreview.value = URL.createObjectURL(file); 
+    }
 };
 
 const onMobileSelect = (e) => {
     const file = e.target.files[0];
-    if (file) { form.mobile_image = file; mobilePreview.value = URL.createObjectURL(file); }
+    if (file) { 
+        if (!allowedTypes.includes(file.type)) { alert('Format tidak didukung! Hanya JPG, PNG, dan WebP yang diizinkan.'); e.target.value = ''; return; }
+        form.mobile_image = file; mobilePreview.value = URL.createObjectURL(file); 
+    }
 };
 
 const submit = () => { form.post('/admin/banners'); };
@@ -77,7 +84,7 @@ const submit = () => { form.post('/admin/banners'); };
                         <label class="block text-sm font-medium text-gray-700 mb-2"><Image class="w-4 h-4 inline mr-1" />Desktop (1920x600) *</label>
                         <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-orange-500 transition-colors">
                             <img v-if="desktopPreview" :src="desktopPreview" class="w-full h-32 object-cover rounded-lg mb-2">
-                            <input type="file" @change="onDesktopSelect" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100">
+                            <input type="file" @change="onDesktopSelect" accept=".jpg,.jpeg,.png,.webp" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100">
                         </div>
                         <p v-if="form.errors.image" class="text-red-500 text-xs mt-1">{{ form.errors.image }}</p>
                     </div>
@@ -86,7 +93,7 @@ const submit = () => { form.post('/admin/banners'); };
                         <label class="block text-sm font-medium text-gray-700 mb-2"><Smartphone class="w-4 h-4 inline mr-1" />Mobile (720x480)</label>
                         <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-pink-500 transition-colors">
                             <img v-if="mobilePreview" :src="mobilePreview" class="w-full h-32 object-cover rounded-lg mb-2">
-                            <input type="file" @change="onMobileSelect" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100">
+                            <input type="file" @change="onMobileSelect" accept=".jpg,.jpeg,.png,.webp" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100">
                         </div>
                     </div>
                 </div>

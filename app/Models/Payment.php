@@ -68,6 +68,7 @@ class Payment extends Model
         'cstore' => 'Minimarket',
         'credit_card' => 'Kartu Kredit',
         'other' => 'Lainnya',
+        'free' => 'Gratis (Kupon)',
     ];
 
     // Relationships
@@ -92,7 +93,7 @@ class Payment extends Model
 
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_PENDING => 'yellow',
             self::STATUS_SUCCESS => 'green',
             self::STATUS_FAILED, self::STATUS_DENY => 'red',

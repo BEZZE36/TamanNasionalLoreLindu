@@ -51,8 +51,9 @@ class TicketController extends Controller
 
         $todayStats = [
             'total' => Ticket::whereDate('valid_date', today())->count(),
-            'validated' => Ticket::whereDate('valid_date', today())->where('status', 'used')->count(),
-            'pending' => Ticket::whereDate('valid_date', today())->where('status', 'valid')->count(),
+            'validated' => Ticket::whereDate('used_at', today())->where('status', 'used')->count(),
+            // Count all valid tickets that can be validated (any date)
+            'pending' => Ticket::where('status', 'valid')->count(),
         ];
 
         return Inertia::render('Admin/Tickets/Index', [
@@ -114,6 +115,9 @@ class TicketController extends Controller
                     'validated_by' => auth('admin')->id(),
                 ]);
 
+                // Update booking status if all tickets are now used
+                $this->updateBookingStatusIfAllUsed($ticket);
+
                 // Notify
                 $this->notificationService->notifyTicketValidated($ticket);
 
@@ -171,10 +175,33 @@ class TicketController extends Controller
             'validated_by' => auth('admin')->id(),
         ]);
 
+        // Update booking status if all tickets are now used
+        $this->updateBookingStatusIfAllUsed($ticket);
+
         // Send notification
         $this->notificationService->notifyTicketValidated($ticket);
 
         return back()->with('success', 'Tiket berhasil divalidasi secara manual.');
+    }
+
+    /**
+     * Update booking status to 'used' if all tickets are now used
+     */
+    protected function updateBookingStatusIfAllUsed(Ticket $ticket): void
+    {
+        $booking = \App\Models\Booking::find($ticket->booking_id);
+        if (!$booking)
+            return;
+
+        $remainingValid = Ticket::where('booking_id', $booking->id)
+            ->where('status', '!=', 'used')
+            ->count();
+
+        if ($remainingValid === 0 && in_array($booking->status, [\App\Models\Booking::STATUS_CONFIRMED, 'paid', 'confirmed'])) {
+            $booking->status = \App\Models\Booking::STATUS_USED;
+            $booking->used_at = now();
+            $booking->save();
+        }
     }
 
     public function checkStatus($code)

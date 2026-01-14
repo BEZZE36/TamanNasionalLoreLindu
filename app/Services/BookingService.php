@@ -75,7 +75,7 @@ class BookingService
         }
 
         // 2. Auto-heal: If Paid but Ticket/Email missing
-        if ($booking->status === Booking::STATUS_PAID && !$booking->ticket) {
+        if ($booking->status === Booking::STATUS_CONFIRMED && !$booking->ticket) {
             $booking = $this->generateMissingTickets($booking);
         }
 
@@ -90,7 +90,7 @@ class BookingService
         try {
             $status = $midtransService->getStatus($booking->order_number);
             if ($status && in_array($status['transaction_status'], ['settlement', 'capture'])) {
-                $booking->update(['status' => Booking::STATUS_PAID]);
+                $booking->update(['status' => Booking::STATUS_CONFIRMED]);
 
                 // Update/Create Payment
                 $payment = $booking->payment;

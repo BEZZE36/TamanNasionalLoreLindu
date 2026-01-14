@@ -43,12 +43,30 @@ const formatPhone = (phone) => {
 
 const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount || 0);
 
-const getBookingStatus = (status) => ({
-    'paid': { label: 'Lunas', class: 'from-emerald-500 to-teal-600 text-white' },
-    'used': { label: 'Digunakan', class: 'from-blue-500 to-indigo-600 text-white' },
-    'pending': { label: 'Pending', class: 'from-amber-500 to-orange-600 text-white' },
-    'cancelled': { label: 'Dibatalkan', class: 'from-red-500 to-rose-600 text-white' }
-}[status] || { label: status, class: 'from-gray-500 to-gray-600 text-white' });
+// Normalize legacy statuses to new 4 statuses
+const normalizeStatus = (status) => {
+    const mapping = {
+        'pending': 'pending',
+        'awaiting_cash': 'pending',
+        'paid': 'confirmed',
+        'confirmed': 'confirmed',
+        'used': 'used',
+        'cancelled': 'cancelled',
+        'expired': 'cancelled',
+        'refunded': 'cancelled'
+    };
+    return mapping[status] || status;
+};
+
+const getBookingStatus = (status) => {
+    const normalizedStat = normalizeStatus(status);
+    return {
+        'confirmed': { label: 'Terkonfirmasi', class: 'from-emerald-500 to-teal-600 text-white' },
+        'used': { label: 'Digunakan', class: 'from-blue-500 to-indigo-600 text-white' },
+        'pending': { label: 'Pending', class: 'from-amber-500 to-orange-600 text-white' },
+        'cancelled': { label: 'Dibatalkan', class: 'from-red-500 to-rose-600 text-white' }
+    }[normalizedStat] || { label: status, class: 'from-gray-500 to-gray-600 text-white' };
+};
 
 const toggleBlock = () => {
     const action = props.user.status === 'active' ? 'block' : 'unblock';

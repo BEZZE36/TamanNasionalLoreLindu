@@ -2,9 +2,9 @@
 /**
  * Wishlist Page - Premium Redesign
  * Matches Destination Hero Design with GSAP animations
- * Features: Hero section, 3D cards, parallax effects, responsive design
+ * Features: Hero section, 3D cards, parallax effects, responsive design, tabs for different content types
  */
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import PublicLayout from '@/Layouts/PublicLayout.vue';
 import { gsap } from 'gsap';
@@ -12,7 +12,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import { 
     Heart, MapPin, Trash2, ArrowRight, Compass, Star, Clock, 
-    Bookmark, TrendingUp, HeartCrack, Search, Leaf, Bird, FileText, Newspaper, Image
+    Bookmark, TrendingUp, HeartCrack, Search, Leaf, Bird, FileText, Newspaper, Image, Eye
 } from 'lucide-vue-next';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
@@ -20,7 +20,9 @@ gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 defineOptions({ layout: PublicLayout });
 
 const props = defineProps({
-    destinations: Object // Paginated
+    destinations: Object, // Paginated
+    blogArticles: Array,  // Blog favorites
+    newsArticles: Array,  // News favorites
 });
 
 // Refs
@@ -30,14 +32,31 @@ const contentRef = ref(null);
 const cardsRef = ref(null);
 const counters = ref({ total: 0 });
 
+// Tabs
+const tabs = [
+    { id: 'destinations', name: 'Destinasi', icon: MapPin },
+    { id: 'blog', name: 'Blog', icon: FileText },
+    { id: 'news', name: 'Berita', icon: Newspaper },
+];
+const activeTab = ref('destinations');
+
 let ctx;
 
-// Stats
-const totalWishlist = computed(() => props.destinations?.data?.length || 0);
-const latestAdded = computed(() => {
-    if (!props.destinations?.data?.length) return null;
-    return props.destinations.data[0]?.name || 'Belum ada';
+// Stats computed
+const totalWishlist = computed(() => {
+    return (props.destinations?.data?.length || 0) + 
+           (props.blogArticles?.length || 0) + 
+           (props.newsArticles?.length || 0);
 });
+
+const latestAdded = computed(() => {
+    if (props.destinations?.data?.length) return props.destinations.data[0]?.name;
+    if (props.blogArticles?.length) return props.blogArticles[0]?.title;
+    if (props.newsArticles?.length) return props.newsArticles[0]?.title;
+    return 'Belum ada';
+});
+
+const formatDate = (date) => new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 
 // Smooth scroll to wishlist content
 const scrollToContent = () => {
@@ -326,12 +345,33 @@ onBeforeUnmount(() => { if (ctx) ctx.revert(); });
                         Konten <span class="bg-gradient-to-r from-rose-500 to-pink-500 bg-clip-text text-transparent">Favorit</span>
                     </h2>
                     <p class="text-xs sm:text-sm text-gray-500 max-w-md mx-auto">
-                        Destinasi, flora, fauna, blog, berita & galeri yang telah Anda simpan
+                        Destinasi, blog, dan berita yang telah Anda simpan
                     </p>
                 </div>
 
+                <!-- Tabs -->
+                <div class="flex justify-center gap-2 sm:gap-3 mb-8">
+                    <button 
+                        v-for="tab in tabs" 
+                        :key="tab.id"
+                        @click="activeTab = tab.id"
+                        :class="[
+                            'flex items-center gap-1.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300',
+                            activeTab === tab.id 
+                                ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-500/25' 
+                                : 'bg-white text-gray-600 hover:bg-gray-100 shadow-md'
+                        ]"
+                    >
+                        <component :is="tab.icon" class="w-4 h-4" />
+                        {{ tab.name }}
+                        <span v-if="tab.id === 'destinations'" class="ml-1 px-1.5 py-0.5 bg-white/20 rounded-md text-[10px]">{{ destinations?.data?.length || 0 }}</span>
+                        <span v-else-if="tab.id === 'blog'" class="ml-1 px-1.5 py-0.5 bg-white/20 rounded-md text-[10px]">{{ blogArticles?.length || 0 }}</span>
+                        <span v-else-if="tab.id === 'news'" class="ml-1 px-1.5 py-0.5 bg-white/20 rounded-md text-[10px]">{{ newsArticles?.length || 0 }}</span>
+                    </button>
+                </div>
+
                 <!-- Destinations Grid -->
-                <template v-if="destinations?.data?.length > 0">
+                <template v-if="activeTab === 'destinations' && destinations?.data?.length > 0">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
                         <div 
                             v-for="(destination, index) in destinations.data" 
@@ -470,8 +510,80 @@ onBeforeUnmount(() => { if (ctx) ctx.revert(); });
                     </div>
                 </template>
 
-                <!-- Empty State -->
-                <div v-else class="empty-state text-center py-12 sm:py-16 lg:py-20">
+                <!-- Blog Articles Grid -->
+                <div v-if="activeTab === 'blog'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
+                    <Link 
+                        v-for="article in blogArticles" 
+                        :key="article.id"
+                        :href="`/blog/${article.slug}`"
+                        class="wishlist-card group bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-gray-100/80"
+                    >
+                        <div class="relative h-40 sm:h-48 overflow-hidden">
+                            <img 
+                                :src="article.featured_image || '/images/placeholder-no-image.svg'" 
+                                :alt="article.title"
+                                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            >
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-cyan-500/90 text-white text-[10px] font-semibold">Blog</span>
+                        </div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-gray-900 text-sm line-clamp-2 mb-2 group-hover:text-cyan-600 transition-colors">{{ article.title }}</h3>
+                            <p class="text-gray-500 text-xs line-clamp-2 mb-3">{{ article.excerpt }}</p>
+                            <div class="flex items-center justify-between text-xs text-gray-400">
+                                <span class="flex items-center gap-1"><Eye class="w-3 h-3" />{{ article.views_count || 0 }}</span>
+                                <span class="flex items-center gap-1"><Heart class="w-3 h-3" />{{ article.likes_count || 0 }}</span>
+                                <span>{{ formatDate(article.published_at) }}</span>
+                            </div>
+                        </div>
+                    </Link>
+                    <div v-if="!blogArticles?.length" class="col-span-full text-center py-12">
+                        <FileText class="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p class="text-gray-500 text-sm">Belum ada artikel blog yang disimpan</p>
+                        <Link href="/blog" class="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-cyan-500 text-white text-xs font-semibold rounded-lg hover:bg-cyan-600 transition-colors">
+                            Jelajahi Blog <ArrowRight class="w-3 h-3" />
+                        </Link>
+                    </div>
+                </div>
+
+                <!-- News Articles Grid -->
+                <div v-if="activeTab === 'news'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
+                    <Link 
+                        v-for="article in newsArticles" 
+                        :key="article.id"
+                        :href="`/news/${article.slug}`"
+                        class="wishlist-card group bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-gray-100/80"
+                    >
+                        <div class="relative h-40 sm:h-48 overflow-hidden">
+                            <img 
+                                :src="article.featured_image || '/images/placeholder-no-image.svg'" 
+                                :alt="article.title"
+                                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            >
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-rose-500/90 text-white text-[10px] font-semibold">Berita</span>
+                        </div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-gray-900 text-sm line-clamp-2 mb-2 group-hover:text-rose-600 transition-colors">{{ article.title }}</h3>
+                            <p class="text-gray-500 text-xs line-clamp-2 mb-3">{{ article.excerpt }}</p>
+                            <div class="flex items-center justify-between text-xs text-gray-400">
+                                <span class="flex items-center gap-1"><Eye class="w-3 h-3" />{{ article.views_count || 0 }}</span>
+                                <span class="flex items-center gap-1"><Heart class="w-3 h-3" />{{ article.likes_count || 0 }}</span>
+                                <span>{{ formatDate(article.published_at) }}</span>
+                            </div>
+                        </div>
+                    </Link>
+                    <div v-if="!newsArticles?.length" class="col-span-full text-center py-12">
+                        <Newspaper class="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p class="text-gray-500 text-sm">Belum ada berita yang disimpan</p>
+                        <Link href="/news" class="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-rose-500 text-white text-xs font-semibold rounded-lg hover:bg-rose-600 transition-colors">
+                            Jelajahi Berita <ArrowRight class="w-3 h-3" />
+                        </Link>
+                    </div>
+                </div>
+
+                <!-- Empty State (when destinations tab selected but empty) -->
+                <div v-if="activeTab === 'destinations' && !destinations?.data?.length" class="empty-state text-center py-12 sm:py-16 lg:py-20">
                     <div class="relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 mx-auto mb-6 sm:mb-8">
                         <!-- Animated background circles -->
                         <div class="absolute inset-0 bg-gradient-to-br from-rose-100 to-pink-100 rounded-3xl rotate-6 animate-pulse"></div>

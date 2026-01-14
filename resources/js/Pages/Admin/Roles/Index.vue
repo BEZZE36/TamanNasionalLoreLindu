@@ -5,7 +5,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { gsap } from 'gsap';
 import { 
     Shield, Plus, Edit, Trash2, Users, Key, Crown, 
-    CheckCircle, AlertTriangle, Loader2, Sparkles, Lock, Settings
+    CheckCircle, AlertTriangle, Loader2, Sparkles, Lock, Settings, Eye, User, UserX
 } from 'lucide-vue-next';
 
 defineOptions({ layout: AdminLayout });
@@ -178,11 +178,31 @@ const confirmDelete = () => {
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div v-for="role in localRoles" :key="role.id"
                 class="role-card group bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-                <div :class="['p-5', role.slug === 'super-admin' ? 'bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50' : 'bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50']">
+                <div :class="[
+                    'p-5',
+                    role.slug === 'super-admin' ? 'bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50' :
+                    role.slug === 'admin' ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50' :
+                    role.slug === 'user' ? 'bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50' :
+                    role.slug === 'guest' ? 'bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50' :
+                    'bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50'
+                ]">
                     <div class="flex items-start justify-between">
                         <div class="flex items-center gap-3">
-                            <div :class="['w-12 h-12 rounded-xl flex items-center justify-center shadow-lg', role.slug === 'super-admin' ? 'bg-gradient-to-br from-amber-400 to-yellow-500' : 'bg-gradient-to-br from-slate-500 to-gray-600']">
-                                <component :is="role.slug === 'super-admin' ? Crown : Shield" class="w-6 h-6 text-white" />
+                            <div :class="[
+                                'w-12 h-12 rounded-xl flex items-center justify-center shadow-lg',
+                                role.slug === 'super-admin' ? 'bg-gradient-to-br from-amber-400 to-yellow-500' :
+                                role.slug === 'admin' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
+                                role.slug === 'user' ? 'bg-gradient-to-br from-emerald-400 to-teal-500' :
+                                role.slug === 'guest' ? 'bg-gradient-to-br from-slate-400 to-gray-500' :
+                                'bg-gradient-to-br from-slate-500 to-gray-600'
+                            ]">
+                                <component :is="
+                                    role.slug === 'super-admin' ? Crown :
+                                    role.slug === 'admin' ? Shield :
+                                    role.slug === 'user' ? User :
+                                    role.slug === 'guest' ? UserX :
+                                    Shield
+                                " class="w-6 h-6 text-white" />
                             </div>
                             <div>
                                 <h3 class="font-bold text-gray-900 text-sm">{{ role.name }}</h3>
@@ -190,6 +210,9 @@ const confirmDelete = () => {
                             </div>
                         </div>
                         <span v-if="role.slug === 'super-admin'" class="px-2 py-1 bg-amber-100 text-amber-700 text-[9px] font-bold rounded-full">⭐ Master</span>
+                        <span v-else-if="role.slug === 'admin'" class="px-2 py-1 bg-blue-100 text-blue-700 text-[9px] font-bold rounded-full">🛡️ Admin</span>
+                        <span v-else-if="role.slug === 'user'" class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded-full">👤 User</span>
+                        <span v-else-if="role.slug === 'guest'" class="px-2 py-1 bg-slate-100 text-slate-600 text-[9px] font-bold rounded-full">👁️ Guest</span>
                     </div>
                 </div>
                 <div class="p-5">
@@ -203,17 +226,33 @@ const confirmDelete = () => {
                             <span class="text-amber-500">✨</span>
                             <span class="font-bold">Akses Penuh</span>
                         </div>
+                        <div v-else-if="role.slug === 'user'" class="flex items-center gap-1.5 text-[10px] text-emerald-600">
+                            <span class="text-emerald-500">✨</span>
+                            <span class="font-bold">Full Akses Halaman Public</span>
+                        </div>
+                        <div v-else-if="role.slug === 'guest'" class="flex items-center gap-1.5 text-[10px] text-slate-500">
+                            <span class="text-slate-400">👁️</span>
+                            <span class="font-bold">Hanya Membaca (Read-Only)</span>
+                        </div>
                         <div v-else class="flex items-center gap-1.5 text-[10px] text-gray-500">
                             <Key class="w-3.5 h-3.5" />
                             <span class="font-medium">{{ role.permissions_count || 0 }} Izin</span>
                         </div>
                     </div>
                     <div class="flex gap-2">
-                        <Link :href="`/admin/roles/${role.id}/edit`" 
+                        <!-- Default roles (super-admin, user, guest) show Lihat button -->
+                        <Link v-if="['super-admin', 'user', 'guest'].includes(role.slug)" 
+                            :href="`/admin/roles/${role.id}/edit`" 
+                            class="flex-1 py-2.5 text-center rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5">
+                            <Eye class="w-3.5 h-3.5" /> Lihat
+                        </Link>
+                        <!-- Custom roles show Edit button -->
+                        <Link v-else :href="`/admin/roles/${role.id}/edit`" 
                             class="flex-1 py-2.5 text-center rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5">
                             <Edit class="w-3.5 h-3.5" /> Edit
                         </Link>
-                        <button v-if="role.slug !== 'super-admin'" @click="openDelete(role)" 
+                        <!-- Only custom roles can be deleted -->
+                        <button v-if="!['super-admin', 'user', 'guest'].includes(role.slug)" @click="openDelete(role)" 
                             class="px-4 py-2.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
                             <Trash2 class="w-4 h-4" />
                         </button>

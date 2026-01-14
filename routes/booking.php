@@ -18,6 +18,10 @@ Route::get('/booking/{orderNumber}/payment', [BookingController::class, 'payment
 Route::post('/booking/{orderNumber}/confirm-cash', [BookingController::class, 'confirmCash'])->name('booking.confirm-cash');
 Route::get('/booking/{orderNumber}/success', [BookingController::class, 'success'])->name('booking.success');
 
+// Edit pending booking
+Route::get('/booking/{orderNumber}/edit', [BookingController::class, 'edit'])->middleware('auth')->name('booking.edit');
+Route::put('/booking/{orderNumber}', [BookingController::class, 'update'])->middleware('auth')->name('booking.update');
+
 // Payment Callbacks (Midtrans)
 Route::prefix('payment')->name('payment.')->group(function () {
     Route::post('/notification', [PaymentController::class, 'handleNotification'])->name('notification');
